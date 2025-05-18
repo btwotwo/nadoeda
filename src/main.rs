@@ -128,7 +128,7 @@ mod tests {
     use std::{borrow::BorrowMut, cell::{Cell, RefCell}, collections::HashMap, time::Duration};
     use tokio_util::sync::CancellationToken;
 
-    unsafe impl Send for MockWorker {}
+    /// SAFETY: Used only in unit tests, is not shared between threads.
     unsafe impl Sync for MockWorker {}
     struct MockWorker {
         received_reminders: RefCell<Vec<Reminder>>
