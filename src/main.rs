@@ -1,8 +1,12 @@
 #![allow(dead_code, unused_imports, unused_variables)]
 mod reminder;
+mod worker;
+mod common;
 use anyhow::ensure;
 use chrono::{DateTime, Duration, NaiveTime, Utc};
+use common::{ReminderManagerMessage, ReminderManagerSender, SchedulerContext};
 use reminder::{Reminder, ReminderId};
+use worker::{ReminderWorker, WorkerFactory};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
@@ -17,75 +21,55 @@ struct ScheduledTask {
 }
 
 impl ScheduledTask {
-    pub async fn cancel(self) {
+    pub async fn cancel(self, timeout: Duration) {
         self.cancellation_token.cancel();
-        //todo: handle error
-        let _ = self.task_handle.await;
+        let cancel_with_timeout = tokio::time::timeout(timeout.to_std().unwrap(), self.task_handle);
+        let _ = cancel_with_timeout.await;
     }
-}
-
-trait WorkerFactory<TParams> {
-    type Worker: ReminderWorker;
-
-    fn create_worker(&self, worker_creation_params: TParams) -> Self::Worker;
-}
-
-type PrinterWorkerParams = ();
-struct PrinterWorkerFactory;
-impl WorkerFactory<PrinterWorkerParams> for PrinterWorkerFactory {
-    type Worker = PrinterWorker;
-
-    fn create_worker(&self, worker_creation_params: PrinterWorkerParams) -> Self::Worker {
-        todo!()
-    }
-}
-
-trait ReminderWorker {
-    fn handle_reminder(self, context: ReminderSchedulerContext) -> impl Future<Output = ()> + Send;
 }
 
 struct PrinterWorker;
+struct PrinterWorkerFactory;
+impl WorkerFactory for PrinterWorkerFactory {
+    type Worker = PrinterWorker;
+
+    fn create_worker(&self) -> Self::Worker {
+        PrinterWorker
+    }
+}
+
 impl ReminderWorker for PrinterWorker {
-    async fn handle_reminder(self, ctx: ReminderSchedulerContext) {
+    async fn handle_reminder(&self, ctx: SchedulerContext) {
         eprintln!("Firing reminder {:?}!", ctx.reminder);
     }
 }
 
-#[derive(Debug)]
-enum ReminderManagerMessage {
-    Schedule(Reminder),
-}
 
-struct ReminderManager<TFactory = PrinterWorkerFactory, TFactoryParams = PrinterWorkerParams>
+struct ReminderManager<TFactory = PrinterWorkerFactory>
 where
-    TFactory: WorkerFactory<TFactoryParams>,
+    TFactory: WorkerFactory,
 {
     sender: ReminderManagerSender,
     manager_task_handle: JoinHandle<()>,
-    worker_factory: TFactory,
-    factory_params: TFactoryParams
+    _marker: PhantomData<TFactory>,
 }
 
-type ReminderManagerSender = mpsc::Sender<ReminderManagerMessage>;
-
-impl<TFactory, TFactoryParams> ReminderManager<TFactory, TFactoryParams>
+impl<TFactory> ReminderManager<TFactory>
 where
-    TFactory: WorkerFactory<TFactoryParams>,
-    TFactory::Worker: Send + Sync,
-    TFactoryParams: Clone
+    TFactory: WorkerFactory + Send + 'static,
+    TFactory::Worker: ReminderWorker + Send,
 {
-    pub fn create(worker_factory: TFactory, factory_params: TFactoryParams) -> Self {
+    pub fn create(worker_factory: TFactory) -> Self {
         let (sender, receiver) = mpsc::channel(64);
         let tasks_sender = sender.clone();
         let manager_task_handle = tokio::spawn(async move {
-            Self::handle_messages(receiver, tasks_sender).await;
+            Self::handle_messages(worker_factory, receiver, tasks_sender).await;
         });
 
         Self {
             sender,
             manager_task_handle,
-            worker_factory,
-            factory_params
+            _marker: PhantomData,
         }
     }
 
@@ -99,53 +83,51 @@ where
     }
 
     async fn handle_messages(
+        worker_factory: TFactory,
         mut receiver: mpsc::Receiver<ReminderManagerMessage>,
         sender: mpsc::Sender<ReminderManagerMessage>,
     ) {
-        let mut state = HashMap::<ReminderId, ScheduledTask>::new();
+        let mut tasks = HashMap::<ReminderId, ScheduledTask>::new();
         while let Some(msg) = receiver.recv().await {
             println!("manager got message! {:?}", msg);
             match msg {
                 ReminderManagerMessage::Schedule(reminder) => {
-                    Self::handle_schedule_reminder(&mut state, reminder, sender.clone()).await
+                    let id = reminder.id;
+                    if let Some(task) = tasks.remove(&reminder.id) {
+                        task.cancel(Duration::seconds(10)).await;
+                    }
+
+                    Self::handle_schedule_reminder(
+                        &mut tasks,
+                        &worker_factory,
+                        reminder,
+                        sender.clone(),
+                    )
                 }
             }
         }
     }
 
-    async fn handle_schedule_reminder(
+    fn handle_schedule_reminder(
         tasks: &mut HashMap<ReminderId, ScheduledTask>,
+        worker_factory: &TFactory,
         reminder: Reminder,
         sender: ReminderManagerSender,
     ) {
         let id = reminder.id;
-        if let Some(task) = tasks.remove(&reminder.id) {
-            //todo add timeout
-            task.cancel().await;
-        }
-
-        let context = ReminderSchedulerContext { reminder, sender };
-
-        let worker = self.get_worker();
+        let context = SchedulerContext { reminder, sender };
+        let worker = worker_factory.create_worker();
         let task = ReminderScheduler::schedule_reminder(context, worker);
         tasks.insert(id, task);
-    }
-
-    fn get_worker(&self) -> TFactory::Worker {
-        self.worker_factory.create_worker(self.factory_params.clone())
     }
 }
 
 struct ReminderScheduler {}
 
-struct ReminderSchedulerContext {
-    sender: ReminderManagerSender,
-    reminder: Reminder,
-}
 
 impl ReminderScheduler {
-    pub fn schedule_reminder<TWorker: ReminderWorker + Send + Sync + 'static>(
-        context: ReminderSchedulerContext,
+    pub fn schedule_reminder<TWorker: ReminderWorker + Send + 'static>(
+        context: SchedulerContext,
         worker: TWorker,
     ) -> ScheduledTask {
         let cancellation_token = CancellationToken::new();
@@ -172,9 +154,9 @@ impl ReminderScheduler {
         Duration::seconds(10)
     }
 
-    async fn do_work<TWorker: ReminderWorker + Send + Sync>(
+    async fn do_work<TWorker: ReminderWorker + Send>(
         cancellation_token: CancellationToken,
-        ctx: ReminderSchedulerContext,
+        ctx: SchedulerContext,
         delay: std::time::Duration,
         worker: TWorker,
     ) {
@@ -216,7 +198,7 @@ mod tests {
             fire_at: chrono::NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap(),
         };
 
-        manager.schedule_reminder(reminder).await;
+        manager.schedule_reminder(reminder).await.unwrap();
         tokio::time::sleep(Duration::from_secs(11)).await;
     }
 }
