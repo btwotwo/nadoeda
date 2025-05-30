@@ -1,12 +1,11 @@
 #![allow(dead_code, unused_imports, unused_variables)]
+mod common;
 mod reminder;
 mod worker;
-mod common;
 use anyhow::ensure;
 use chrono::{DateTime, Duration, NaiveTime, Utc};
 use common::{ReminderManagerMessage, ReminderManagerSender, SchedulerContext};
 use reminder::{Reminder, ReminderId};
-use worker::{ReminderWorker, WorkerFactory};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
@@ -14,6 +13,7 @@ use std::{
 };
 use tokio::{sync::mpsc, task::JoinHandle, time::Instant};
 use tokio_util::sync::CancellationToken;
+use worker::{ReminderWorker, WorkerFactory};
 
 struct ScheduledTask {
     task_handle: JoinHandle<()>,
@@ -43,7 +43,6 @@ impl ReminderWorker for PrinterWorker {
         eprintln!("Firing reminder {:?}!", ctx.reminder);
     }
 }
-
 
 struct ReminderManager<TFactory = PrinterWorkerFactory>
 where
@@ -104,6 +103,13 @@ where
                         sender.clone(),
                     )
                 }
+
+                ReminderManagerMessage::Cancel(reminder) => {
+                    let id = reminder.id;
+                    if let Some(task) = tasks.remove(&reminder.id) {
+                        task.cancel(Duration::seconds(10)).await;
+                    }
+                }
             }
         }
     }
@@ -124,7 +130,6 @@ where
 
 struct ReminderScheduler {}
 
-
 impl ReminderScheduler {
     pub fn schedule_reminder<TWorker: ReminderWorker + Send + 'static>(
         context: SchedulerContext,
@@ -141,7 +146,7 @@ impl ReminderScheduler {
             .expect("The target delay is always in the future.");
 
         let task_handle = tokio::spawn(async move {
-            Self::do_work(task_cancellation_token, context, delay, worker).await
+            Self::handle_reminder_after_delay(task_cancellation_token, context, delay, worker).await
         });
 
         ScheduledTask {
@@ -154,7 +159,7 @@ impl ReminderScheduler {
         Duration::seconds(10)
     }
 
-    async fn do_work<TWorker: ReminderWorker + Send>(
+    async fn handle_reminder_after_delay<TWorker: ReminderWorker + Send>(
         cancellation_token: CancellationToken,
         ctx: SchedulerContext,
         delay: std::time::Duration,
@@ -181,24 +186,54 @@ mod tests {
     use crate::*;
     use chrono::NaiveTime;
     use std::{
-        borrow::BorrowMut,
-        cell::{Cell, RefCell},
-        collections::HashMap,
-        time::Duration,
+        any::Any, borrow::BorrowMut, cell::{Cell, RefCell}, collections::HashMap, io::Read, sync::{Arc, RwLock}, time::Duration
     };
-    use tokio::time;
+    use tokio::{sync::Mutex, time};
     use tokio_util::sync::CancellationToken;
 
+    struct MockWorkerFactory {
+        received_tasks: Arc<Mutex<Vec<ReminderId>>>
+    }
+    
+    struct MockWorker {
+        received_tasks: Arc<Mutex<Vec<ReminderId>>>
+    }
+
+    impl ReminderWorker for MockWorker {
+        async fn handle_reminder(&self, context: SchedulerContext) {
+            let mut tasks = self.received_tasks.lock().await;
+            tasks.push(context.reminder.id);
+        }
+    }
+
+    impl WorkerFactory for MockWorkerFactory {
+        type Worker = MockWorker;
+
+        fn create_worker(&self) -> Self::Worker {
+            MockWorker {
+                received_tasks: self.received_tasks.clone()
+            }
+        }
+    }
+
     #[tokio::test(start_paused = true)]
-    pub async fn integration() {
-        let manager = ReminderManager::create(PrinterWorkerFactory);
+    pub async fn basic_scheduling_test() {
+        let received_tasks = Arc::new(Mutex::new(vec![]));
+        let factory = MockWorkerFactory {
+            received_tasks: Arc::clone(&received_tasks)
+        };
+        let manager = ReminderManager::create(factory);
         let reminder = Reminder {
             id: 1,
             state: reminder::ReminderState::Pending,
             fire_at: chrono::NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap(),
         };
-
+        let reminder_id = reminder.id;
         manager.schedule_reminder(reminder).await.unwrap();
         tokio::time::sleep(Duration::from_secs(11)).await;
+        let tasks = received_tasks.lock().await;
+        
+        assert_eq!(tasks.len(), 1);
+        assert_eq!(*tasks.first().unwrap(), reminder_id)
     }
 }
