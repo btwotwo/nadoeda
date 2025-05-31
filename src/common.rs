@@ -5,7 +5,7 @@ use crate::reminder::Reminder;
 #[derive(Debug)]
 pub enum ReminderManagerMessage {
     Schedule(Reminder),
-    Cancel(Reminder)
+    Cancel(Reminder),
 }
 
 pub type ReminderManagerSender = mpsc::Sender<ReminderManagerMessage>;

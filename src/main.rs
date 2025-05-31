@@ -186,17 +186,23 @@ mod tests {
     use crate::*;
     use chrono::NaiveTime;
     use std::{
-        any::Any, borrow::BorrowMut, cell::{Cell, RefCell}, collections::HashMap, io::Read, sync::{Arc, RwLock}, time::Duration
+        any::Any,
+        borrow::BorrowMut,
+        cell::{Cell, RefCell},
+        collections::HashMap,
+        io::Read,
+        sync::{Arc, RwLock},
+        time::Duration,
     };
     use tokio::{sync::Mutex, time};
     use tokio_util::sync::CancellationToken;
 
     struct MockWorkerFactory {
-        received_tasks: Arc<Mutex<Vec<ReminderId>>>
+        received_tasks: Arc<Mutex<Vec<ReminderId>>>,
     }
-    
+
     struct MockWorker {
-        received_tasks: Arc<Mutex<Vec<ReminderId>>>
+        received_tasks: Arc<Mutex<Vec<ReminderId>>>,
     }
 
     impl ReminderWorker for MockWorker {
@@ -211,7 +217,7 @@ mod tests {
 
         fn create_worker(&self) -> Self::Worker {
             MockWorker {
-                received_tasks: self.received_tasks.clone()
+                received_tasks: self.received_tasks.clone(),
             }
         }
     }
@@ -220,7 +226,7 @@ mod tests {
     pub async fn basic_scheduling_test() {
         let received_tasks = Arc::new(Mutex::new(vec![]));
         let factory = MockWorkerFactory {
-            received_tasks: Arc::clone(&received_tasks)
+            received_tasks: Arc::clone(&received_tasks),
         };
         let manager = ReminderManager::create(factory);
         let reminder = Reminder {
@@ -232,7 +238,7 @@ mod tests {
         manager.schedule_reminder(reminder).await.unwrap();
         tokio::time::sleep(Duration::from_secs(11)).await;
         let tasks = received_tasks.lock().await;
-        
+
         assert_eq!(tasks.len(), 1);
         assert_eq!(*tasks.first().unwrap(), reminder_id)
     }
