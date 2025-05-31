@@ -308,6 +308,7 @@ mod tests {
 
             assert!(target_datetime > now, "Target time should always be in the future");
             assert!(target_datetime.time() == fire_at, "fire_at = {:?}, target_datetime.time() = {:?}, target_datetime = {:?}", fire_at, target_datetime.time(), target_datetime);
+            assert!(delay.num_days() <= 1, "Delay should be one day or less. delay.days = {}", delay.num_days())
         }
     }
 }
