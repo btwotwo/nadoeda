@@ -1,6 +1,7 @@
-use crate::{
+use crate::reminder::{Reminder, ReminderId};
+
+use super::{
     common::{ReminderManagerMessage, ReminderManagerSender, SchedulerContext},
-    reminder::{Reminder, ReminderId},
     scheduler::{ReminderScheduler, ScheduledTask},
     worker::{ReminderWorker, WorkerFactory},
 };
@@ -101,10 +102,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        manager::ReminderManager, reminder::ReminderFireTime, scheduler::ReminderScheduler, *,
-    };
-    use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, NaiveWeek, Timelike};
+    use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, NaiveWeek, Timelike, Utc};
     use std::{
         any::Any,
         borrow::BorrowMut,
@@ -116,6 +114,8 @@ mod tests {
     };
     use tokio::{sync::Mutex, time};
     use tokio_util::sync::CancellationToken;
+
+    use crate::{reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState}, scheduling::{scheduler::ReminderScheduler, ReminderManager, ReminderWorker, SchedulerContext, WorkerFactory}};
 
     struct MockWorkerFactory {
         received_tasks: Arc<Mutex<Vec<ReminderId>>>,
@@ -135,7 +135,7 @@ mod tests {
 
     impl WorkerFactory for MockWorkerFactory {
         type Worker = MockWorker;
-
+        
         fn create_worker(&self) -> Self::Worker {
             MockWorker {
                 received_tasks: self.received_tasks.clone(),
@@ -152,7 +152,7 @@ mod tests {
         let manager = ReminderManager::create(factory);
         let reminder = Reminder {
             id: 1,
-            state: reminder::ReminderState::Pending,
+            state: ReminderState::Pending,
             fire_at: ReminderFireTime::new(NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap()),
         };
         let expected_delay =

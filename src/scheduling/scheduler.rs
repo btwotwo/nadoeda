@@ -2,7 +2,7 @@ use chrono::{Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use tokio::{task::JoinHandle, time};
 use tokio_util::sync::CancellationToken;
 
-use crate::{common::SchedulerContext, worker::ReminderWorker};
+use super::{common::SchedulerContext, worker::ReminderWorker};
 
 pub struct ScheduledTask {
     task_handle: JoinHandle<()>,
@@ -100,12 +100,13 @@ impl ReminderScheduler {
 #[cfg(test)]
 mod tests {
     use crate::reminder::ReminderFireTime;
+    use crate::scheduling::scheduler::ReminderScheduler;
     use chrono::NaiveDate;
+    use chrono::NaiveDateTime;
+    use chrono::NaiveTime;
     use chrono::Timelike;
     use proptest::prelude::*;
     use proptest_arbitrary_interop::arb;
-
-    use crate::{scheduler::*, *};
 
     #[test]
     pub fn when_firing_time_is_yet_to_come_target_delay_should_be_less_than_day() {

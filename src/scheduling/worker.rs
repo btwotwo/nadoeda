@@ -1,4 +1,4 @@
-use crate::common::SchedulerContext;
+use super::common::SchedulerContext;
 
 pub trait ReminderWorker {
     fn handle_reminder(

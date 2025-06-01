@@ -1,14 +1,9 @@
 #![allow(dead_code, unused_imports, unused_variables)]
-mod common;
-mod manager;
 mod reminder;
-mod scheduler;
-mod worker;
+mod scheduling;
 use anyhow::ensure;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
-use common::{ReminderManagerMessage, ReminderManagerSender, SchedulerContext};
-use reminder::{Reminder, ReminderId};
-use scheduler::{ReminderScheduler, ScheduledTask};
+use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
@@ -16,7 +11,6 @@ use std::{
 };
 use tokio::{sync::mpsc, task::JoinHandle, time::Instant};
 use tokio_util::sync::CancellationToken;
-use worker::{ReminderWorker, WorkerFactory};
 
 struct PrinterWorker;
 struct PrinterWorkerFactory;
