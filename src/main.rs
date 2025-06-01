@@ -3,6 +3,7 @@ mod reminder;
 mod scheduling;
 mod appsettings;
 use anyhow::ensure;
+use appsettings::AppSettings;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use config::Config;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
@@ -33,10 +34,7 @@ impl ReminderWorker for PrinterWorker {
 
 #[tokio::main]
 async fn main() {
-    let settings = Config::builder()
-        .add_source(config::Environment::with_prefix("REMS"))
-        .build()
-        .unwrap();
+    let settings = appsettings::get();
     
     println!("Hello, world!");
 }
