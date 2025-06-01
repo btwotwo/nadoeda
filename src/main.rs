@@ -1,11 +1,13 @@
 #![allow(dead_code, unused_imports, unused_variables)]
 mod common;
 mod reminder;
+mod scheduler;
 mod worker;
 use anyhow::ensure;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use common::{ReminderManagerMessage, ReminderManagerSender, SchedulerContext};
 use reminder::{Reminder, ReminderId};
+use scheduler::{ReminderScheduler, ScheduledTask};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
@@ -14,19 +16,6 @@ use std::{
 use tokio::{sync::mpsc, task::JoinHandle, time::Instant};
 use tokio_util::sync::CancellationToken;
 use worker::{ReminderWorker, WorkerFactory};
-
-struct ScheduledTask {
-    task_handle: JoinHandle<()>,
-    cancellation_token: CancellationToken,
-}
-
-impl ScheduledTask {
-    pub async fn cancel(self, timeout: std::time::Duration) {
-        self.cancellation_token.cancel();
-        let cancel_with_timeout = tokio::time::timeout(timeout, self.task_handle);
-        let _ = cancel_with_timeout.await;
-    }
-}
 
 struct PrinterWorker;
 struct PrinterWorkerFactory;
@@ -39,8 +28,9 @@ impl WorkerFactory for PrinterWorkerFactory {
 }
 
 impl ReminderWorker for PrinterWorker {
-    async fn handle_reminder(&self, ctx: SchedulerContext) {
-        eprintln!("Firing reminder {:?}!", ctx.reminder);
+    async fn handle_reminder(&self, ctx: &SchedulerContext) -> anyhow::Result<()> {
+        println!("Firing reminder {:?}!", ctx.reminder);
+        Ok(())
     }
 }
 
@@ -59,7 +49,8 @@ where
     TFactory::Worker: ReminderWorker + Send,
 {
     pub fn create(worker_factory: TFactory) -> Self {
-        let (sender, receiver) = mpsc::channel(64);
+        let (channel_sender, receiver) = mpsc::channel(64);
+        let sender = ReminderManagerSender::new(channel_sender);
         let tasks_sender = sender.clone();
         let manager_task_handle = tokio::spawn(async move {
             Self::handle_messages(worker_factory, receiver, tasks_sender).await;
@@ -72,19 +63,14 @@ where
         }
     }
 
-    pub async fn schedule_reminder(
-        &self,
-        reminder: Reminder,
-    ) -> Result<(), mpsc::error::SendError<ReminderManagerMessage>> {
-        self.sender
-            .send(ReminderManagerMessage::Schedule(reminder))
-            .await
+    pub async fn schedule_reminder(&self, reminder: Reminder) -> anyhow::Result<()> {
+        self.sender.schedule(reminder).await
     }
 
     async fn handle_messages(
         worker_factory: TFactory,
         mut receiver: mpsc::Receiver<ReminderManagerMessage>,
-        sender: mpsc::Sender<ReminderManagerMessage>,
+        sender: ReminderManagerSender,
     ) {
         let mut tasks = HashMap::<ReminderId, ScheduledTask>::new();
         while let Some(msg) = receiver.recv().await {
@@ -103,7 +89,21 @@ where
                         sender.clone(),
                     )
                 }
-
+                ReminderManagerMessage::ScheduleError(error, reminder) => {
+                    let id = reminder.id;
+                    tasks.remove(&reminder.id);
+                    println!(
+                        "Error executing task for reminder. error = {}, reminder_id = {}",
+                        error, reminder.id
+                    )
+                }
+                ReminderManagerMessage::ScheduleFinished(reminder) => {
+                    tasks.remove(&reminder.id);
+                    println!(
+                        "Successfully executed worker for reminder. [reminder_id = {}]",
+                        reminder.id
+                    )
+                }
                 ReminderManagerMessage::Cancel(reminder) => {
                     let id = reminder.id;
                     if let Some(task) = tasks.remove(&reminder.id) {
@@ -121,72 +121,10 @@ where
         sender: ReminderManagerSender,
     ) {
         let id = reminder.id;
-        let context = SchedulerContext { reminder, sender };
+        let context = SchedulerContext { sender, reminder };
         let worker = worker_factory.create_worker();
         let task = ReminderScheduler::schedule_reminder(context, worker);
         tasks.insert(id, task);
-    }
-}
-
-struct ReminderScheduler {}
-
-impl ReminderScheduler {
-    pub fn schedule_reminder<TWorker: ReminderWorker + Send + 'static>(
-        context: SchedulerContext,
-        worker: TWorker,
-    ) -> ScheduledTask {
-        let cancellation_token = CancellationToken::new();
-        let task_cancellation_token = cancellation_token.child_token();
-
-        let reminder_id = context.reminder.id;
-
-        let now = Utc::now().naive_utc();
-        let delay = Self::get_target_delay(&context.reminder.fire_at, now)
-            .to_std()
-            .expect("The target delay is always in the future.");
-
-        let task_handle = tokio::spawn(async move {
-            Self::handle_reminder_after_delay(task_cancellation_token, context, delay, worker).await
-        });
-
-        ScheduledTask {
-            task_handle,
-            cancellation_token,
-        }
-    }
-
-    async fn handle_reminder_after_delay<TWorker: ReminderWorker + Send>(
-        cancellation_token: CancellationToken,
-        ctx: SchedulerContext,
-        delay: std::time::Duration,
-        worker: TWorker,
-    ) {
-        tokio::select! {
-            _ = cancellation_token.cancelled() => {
-                println!("Task for scheduling reminder was cancelled. {:?}", ctx.reminder)
-            },
-            _ = tokio::time::sleep(delay) => {
-                worker.handle_reminder(ctx).await;
-            }
-        }
-    }
-
-    fn get_target_delay(fire_at: &NaiveTime, now: NaiveDateTime) -> Duration {
-        let max_delta = TimeDelta::new(10, 0).expect("This is always in bounds.");
-        let delta = *fire_at - now.time();
-
-        let today = now.date();
-        let target_date = if delta <= max_delta {
-            today
-                .checked_add_signed(TimeDelta::days(1))
-                .expect("Not realistic to overflow")
-        } else {
-            today
-        };
-
-        let target_datetime = target_date.and_time(*fire_at);
-
-        target_datetime - now
     }
 }
 
@@ -197,10 +135,8 @@ async fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
-    use chrono::{Date, Datelike, NaiveDate, NaiveDateTime, NaiveTime, NaiveWeek, Timelike};
-    use proptest::prelude::*;
-    use proptest_arbitrary_interop::arb;
+    use crate::{reminder::ReminderFireTime, scheduler::ReminderScheduler, *};
+    use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, NaiveWeek, Timelike};
     use std::{
         any::Any,
         borrow::BorrowMut,
@@ -222,9 +158,10 @@ mod tests {
     }
 
     impl ReminderWorker for MockWorker {
-        async fn handle_reminder(&self, context: SchedulerContext) {
+        async fn handle_reminder(&self, context: &SchedulerContext) -> anyhow::Result<()> {
             let mut tasks = self.received_tasks.lock().await;
             tasks.push(context.reminder.id);
+            Ok(())
         }
     }
 
@@ -239,7 +176,6 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    #[ignore = "need to adjust to the new delay logic"]
     pub async fn basic_scheduling_test() {
         let received_tasks = Arc::new(Mutex::new(vec![]));
         let factory = MockWorkerFactory {
@@ -249,66 +185,16 @@ mod tests {
         let reminder = Reminder {
             id: 1,
             state: reminder::ReminderState::Pending,
-            fire_at: chrono::NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap(),
+            fire_at: ReminderFireTime::new(NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap()),
         };
+        let expected_delay =
+            ReminderScheduler::get_target_delay(&reminder.fire_at.time(), Utc::now().naive_utc());
         let reminder_id = reminder.id;
         manager.schedule_reminder(reminder).await.unwrap();
-        tokio::time::sleep(Duration::from_secs(11)).await;
+        tokio::time::sleep(expected_delay.to_std().unwrap() + Duration::from_secs(15)).await;
         let tasks = received_tasks.lock().await;
 
         assert_eq!(tasks.len(), 1);
         assert_eq!(*tasks.first().unwrap(), reminder_id)
-    }
-
-    #[test]
-    pub fn when_firing_time_is_yet_to_come_target_delay_should_be_less_than_day() {
-        let now = NaiveDateTime::new(
-            NaiveDate::from_ymd_opt(2025, 05, 31).unwrap(),
-            NaiveTime::from_hms_opt(12, 0, 0).unwrap(),
-        );
-        let fire_at = NaiveTime::from_hms_opt(13, 0, 0).unwrap();
-
-        let delay = ReminderScheduler::get_target_delay(&fire_at, now);
-
-        assert_eq!(
-            delay.num_hours(),
-            1,
-            "With given constraints the delay should be 1 hour."
-        );
-    }
-
-    #[test]
-    pub fn when_firing_time_is_passed_target_delay_should_be_next_day() {
-        let now = NaiveDateTime::new(
-            NaiveDate::from_ymd_opt(2025, 05, 31).unwrap(),
-            NaiveTime::from_hms_opt(12, 0, 0).unwrap(),
-        );
-        let fire_at = NaiveTime::from_hms_opt(11, 0, 0).unwrap();
-        let delay = ReminderScheduler::get_target_delay(&fire_at, now);
-
-        assert_eq!(
-            delay.num_hours(),
-            23,
-            "With given constraints, the delay should be 23 hours"
-        );
-    }
-
-    proptest! {
-        #[test]
-        fn test_target_delay(
-            now in arb::<NaiveDateTime>(),
-            fire_at in arb::<NaiveTime>()
-        ) {
-            let fire_at = fire_at.with_nanosecond(0).unwrap();
-            let now = now.with_nanosecond(0).unwrap();
-
-            let acceptable_delay = TimeDelta::seconds(0);
-            let delay = ReminderScheduler::get_target_delay(&fire_at, now);
-            let target_datetime = now + delay;
-
-            assert!(target_datetime > now, "Target time should always be in the future");
-            assert!(target_datetime.time() == fire_at, "fire_at = {:?}, target_datetime.time() = {:?}, target_datetime = {:?}", fire_at, target_datetime.time(), target_datetime);
-            assert!(delay.num_days() <= 1, "Delay should be one day or less. delay.days = {}", delay.num_days())
-        }
     }
 }

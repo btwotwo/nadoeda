@@ -1,3 +1,5 @@
+use chrono::Timelike;
+
 #[derive(Debug)]
 pub enum ReminderState {
     Pending,
@@ -9,8 +11,23 @@ pub enum ReminderState {
 pub type ReminderId = u64;
 
 #[derive(Debug)]
+pub struct ReminderFireTime(chrono::NaiveTime);
+
+impl ReminderFireTime {
+    pub fn new(inner: chrono::NaiveTime) -> Self {
+        let normalized_time = inner.with_nanosecond(0).expect("Will never fail.");
+        Self(normalized_time)
+    }
+
+    pub fn time(&self) -> chrono::NaiveTime {
+        self.0
+    }
+}
+
+#[derive(Debug)]
 pub struct Reminder {
     pub id: ReminderId,
     pub state: ReminderState,
-    pub fire_at: chrono::NaiveTime,
+    pub fire_at: ReminderFireTime,
 }
+
