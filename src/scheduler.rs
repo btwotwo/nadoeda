@@ -99,14 +99,14 @@ impl ReminderScheduler {
 
 #[cfg(test)]
 mod tests {
-    use chrono::Timelike;
     use crate::reminder::ReminderFireTime;
     use chrono::NaiveDate;
+    use chrono::Timelike;
     use proptest::prelude::*;
     use proptest_arbitrary_interop::arb;
 
     use crate::{scheduler::*, *};
-    
+
     #[test]
     pub fn when_firing_time_is_yet_to_come_target_delay_should_be_less_than_day() {
         let now = NaiveDateTime::new(

@@ -1,12 +1,12 @@
-use std::{collections::HashMap, marker::PhantomData};
-use chrono::Duration;
-use tokio::{sync::mpsc, task::JoinHandle};
 use crate::{
     common::{ReminderManagerMessage, ReminderManagerSender, SchedulerContext},
     reminder::{Reminder, ReminderId},
     scheduler::{ReminderScheduler, ScheduledTask},
     worker::{ReminderWorker, WorkerFactory},
 };
+use chrono::Duration;
+use std::{collections::HashMap, marker::PhantomData};
+use tokio::{sync::mpsc, task::JoinHandle};
 
 pub struct ReminderManager<TFactory: WorkerFactory> {
     sender: ReminderManagerSender,
@@ -101,7 +101,9 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{manager::ReminderManager, reminder::ReminderFireTime, scheduler::ReminderScheduler, *};
+    use crate::{
+        manager::ReminderManager, reminder::ReminderFireTime, scheduler::ReminderScheduler, *,
+    };
     use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, NaiveWeek, Timelike};
     use std::{
         any::Any,

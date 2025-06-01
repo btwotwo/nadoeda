@@ -1,9 +1,9 @@
 #![allow(dead_code, unused_imports, unused_variables)]
 mod common;
+mod manager;
 mod reminder;
 mod scheduler;
 mod worker;
-mod manager;
 use anyhow::ensure;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use common::{ReminderManagerMessage, ReminderManagerSender, SchedulerContext};
@@ -35,9 +35,7 @@ impl ReminderWorker for PrinterWorker {
     }
 }
 
-
 #[tokio::main]
 async fn main() {
     println!("Hello, world!");
 }
-

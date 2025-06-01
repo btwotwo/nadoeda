@@ -1,7 +1,10 @@
 use crate::common::SchedulerContext;
 
 pub trait ReminderWorker {
-    fn handle_reminder(&self, context: &SchedulerContext) -> impl Future<Output = anyhow::Result<()>> + Send;
+    fn handle_reminder(
+        &self,
+        context: &SchedulerContext,
+    ) -> impl Future<Output = anyhow::Result<()>> + Send;
 }
 
 pub trait WorkerFactory {

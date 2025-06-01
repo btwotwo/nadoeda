@@ -30,4 +30,3 @@ pub struct Reminder {
     pub state: ReminderState,
     pub fire_at: ReminderFireTime,
 }
-
