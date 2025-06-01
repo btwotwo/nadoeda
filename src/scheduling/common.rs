@@ -1,6 +1,5 @@
-use tokio::sync::mpsc;
-
 use crate::reminder::Reminder;
+use tokio::sync::mpsc;
 
 #[derive(Debug)]
 pub enum ReminderManagerMessage {

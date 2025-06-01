@@ -115,7 +115,13 @@ mod tests {
     use tokio::{sync::Mutex, time};
     use tokio_util::sync::CancellationToken;
 
-    use crate::{reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState}, scheduling::{scheduler::ReminderScheduler, ReminderManager, ReminderWorker, SchedulerContext, WorkerFactory}};
+    use crate::{
+        reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState},
+        scheduling::{
+            ReminderManager, ReminderWorker, SchedulerContext, WorkerFactory,
+            scheduler::ReminderScheduler,
+        },
+    };
 
     struct MockWorkerFactory {
         received_tasks: Arc<Mutex<Vec<ReminderId>>>,
@@ -135,7 +141,7 @@ mod tests {
 
     impl WorkerFactory for MockWorkerFactory {
         type Worker = MockWorker;
-        
+
         fn create_worker(&self) -> Self::Worker {
             MockWorker {
                 received_tasks: self.received_tasks.clone(),
