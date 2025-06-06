@@ -3,14 +3,14 @@ use std::sync::OnceLock;
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct TelegramSettings {
-    token: String
+    pub token: String
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct AppSettings {
-    telegram: TelegramSettings
+    pub telegram: TelegramSettings
 }
 
 impl AppSettings {
@@ -21,9 +21,9 @@ impl AppSettings {
             .add_source(Environment::with_prefix("APP"))
             .build()?;
 
-
         settings.try_deserialize()
     }
+
 }
 
 pub fn get() -> &'static AppSettings {

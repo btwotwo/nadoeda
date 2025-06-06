@@ -2,11 +2,13 @@
 mod reminder;
 mod scheduling;
 mod appsettings;
+mod telegram_bot;
 use anyhow::ensure;
 use appsettings::AppSettings;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use config::Config;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
+use teloxide::{prelude::Requester, types::Message, Bot};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
@@ -34,7 +36,15 @@ impl ReminderWorker for PrinterWorker {
 
 #[tokio::main]
 async fn main() {
-    let settings = appsettings::get();
+    pretty_env_logger::init();
+    log::info!("Starting throw dice bot...");
     
-    println!("Hello, world!");
+    let settings = appsettings::get();
+    let bot = Bot::new(settings.telegram.token.clone());
+    
+    teloxide::repl(bot, |bot: Bot, msg: Message| async move {
+        log::info!("Chat id {:?}", msg.chat.id);
+        bot.send_message(msg.chat.id, "Bruh").await?;
+        Ok(())
+    }).await;
 }
