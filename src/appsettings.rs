@@ -5,12 +5,12 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
 pub struct TelegramSettings {
-    pub token: String
+    pub token: String,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct AppSettings {
-    pub telegram: TelegramSettings
+    pub telegram: TelegramSettings,
 }
 
 impl AppSettings {
@@ -23,13 +23,9 @@ impl AppSettings {
 
         settings.try_deserialize()
     }
-
 }
 
 pub fn get() -> &'static AppSettings {
     static APPSETTINGS: OnceLock<AppSettings> = OnceLock::new();
-    APPSETTINGS.get_or_init(|| {
-        AppSettings::new().unwrap()
-    })
+    APPSETTINGS.get_or_init(|| AppSettings::new().unwrap())
 }
-

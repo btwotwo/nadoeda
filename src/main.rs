@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables)]
+mod appsettings;
 mod reminder;
 mod scheduling;
-mod appsettings;
 mod telegram_bot;
 
 use anyhow::ensure;
@@ -9,12 +9,16 @@ use appsettings::AppSettings;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use config::Config;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
-use telegram_bot::{TelegramDeliveryChannel, TelegramInteractionInterface};
-use teloxide::{prelude::Requester, types::{ChatId, Message}, Bot};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
     marker::PhantomData,
+};
+use telegram_bot::{TelegramDeliveryChannel, TelegramInteractionInterface};
+use teloxide::{
+    Bot,
+    prelude::Requester,
+    types::{ChatId, Message},
 };
 use tokio::{sync::mpsc, task::JoinHandle, time::Instant};
 use tokio_util::sync::CancellationToken;
@@ -40,16 +44,17 @@ impl ReminderWorker for PrinterWorker {
 async fn main() {
     pretty_env_logger::init();
     log::info!("Starting throw dice bot...");
-    
+
     let settings = appsettings::get();
-    
+
     let bot = TelegramDeliveryChannel::create();
     let interface_task = tokio::spawn(async move {
         TelegramInteractionInterface::start().await;
     });
-    
+
     bot.send_message("Hi :)", ChatId(185992715)).await;
     tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
-    bot.send_message("Blocking for commands", ChatId(185992715)).await;
+    bot.send_message("Blocking for commands", ChatId(185992715))
+        .await;
     interface_task.await;
 }

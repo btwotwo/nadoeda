@@ -78,7 +78,7 @@ impl ReminderScheduler {
         Ok(())
     }
 
-    pub(in super) fn get_target_delay(fire_at: &NaiveTime, now: NaiveDateTime) -> Duration {
+    pub(super) fn get_target_delay(fire_at: &NaiveTime, now: NaiveDateTime) -> Duration {
         let max_delta = TimeDelta::new(10, 0).expect("This is always in bounds.");
         let delta = *fire_at - now.time();
 
