@@ -3,12 +3,14 @@ mod reminder;
 mod scheduling;
 mod appsettings;
 mod telegram_bot;
+
 use anyhow::ensure;
 use appsettings::AppSettings;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use config::Config;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
-use teloxide::{prelude::Requester, types::Message, Bot};
+use telegram_bot::{TelegramDeliveryChannel, TelegramInteractionInterface};
+use teloxide::{prelude::Requester, types::{ChatId, Message}, Bot};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
@@ -40,11 +42,14 @@ async fn main() {
     log::info!("Starting throw dice bot...");
     
     let settings = appsettings::get();
-    let bot = Bot::new(settings.telegram.token.clone());
     
-    teloxide::repl(bot, |bot: Bot, msg: Message| async move {
-        log::info!("Chat id {:?}", msg.chat.id);
-        bot.send_message(msg.chat.id, "Bruh").await?;
-        Ok(())
-    }).await;
+    let bot = TelegramDeliveryChannel::create();
+    let interface_task = tokio::spawn(async move {
+        TelegramInteractionInterface::start().await;
+    });
+    
+    bot.send_message("Hi :)", ChatId(185992715)).await;
+    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+    bot.send_message("Blocking for commands", ChatId(185992715)).await;
+    interface_task.await;
 }
