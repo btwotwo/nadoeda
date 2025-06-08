@@ -1,37 +1,43 @@
 use chrono::NaiveTime;
 use dptree::case;
 use teloxide::dispatching::UpdateHandler;
-use teloxide::dispatching::dialogue::{self, InMemStorage};
+use teloxide::dispatching::dialogue::{self, GetChatId, InMemStorage};
 use teloxide::prelude::*;
-use teloxide::types::InlineKeyboardButton;
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, handler, types::Message};
+
+use crate::reminder::{Reminder, ReminderFireTime};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
 #[derive(Clone, Default)]
-pub(super) enum CreateReminderState {
+pub(super) enum CreateDailyReminderState {
     #[default]
     Start,
     ReceiveText,
     ReceiveFiringTime {
         text: String,
     },
-    ReceiveFiringPeriod {
+    Confirm {
         text: String,
         firing_time: NaiveTime,
     },
 }
 
-async fn create_reminder_start(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResult {
+async fn create_daily_reminder_start(
+    bot: Bot,
+    dialogue: GlobalDialogue,
+    msg: Message,
+) -> HandlerResult {
     bot.send_message(
             msg.chat.id,
-            "Creating a new reminder! Please input reminder text. If you want to cancel, use the /cancel command.",
+            "Creating a new daily reminder! Please input reminder text. If you want to cancel, use the /cancel command.",
         )
         .await?;
 
     dialogue
-        .update(GlobalState::CreateReminder(
-            CreateReminderState::ReceiveText,
+        .update(GlobalState::CreateDailyReminder(
+            CreateDailyReminderState::ReceiveText,
         ))
         .await?;
 
@@ -46,8 +52,8 @@ async fn receive_reminder_text(bot: Bot, dialogue: GlobalDialogue, msg: Message)
             );
             bot.send_message(msg.chat.id, message).await?;
             dialogue
-                .update(GlobalState::CreateReminder(
-                    CreateReminderState::ReceiveFiringTime {
+                .update(GlobalState::CreateDailyReminder(
+                    CreateDailyReminderState::ReceiveFiringTime {
                         text: text.to_string(),
                     },
                 ))
@@ -72,25 +78,36 @@ async fn receive_firing_time(
         .map(|text| NaiveTime::parse_from_str(text, "%H:%M"))
     {
         Some(Ok(time)) => {
-            bot.send_message(
-                msg.chat.id,
-                format!("Great! Your reminder will fire at {}.\n\nNow, please select how often reminder is going to be fired.", time),
-            )
-                .await?;
+            let message_text = format!(
+                "You will be reminded every day at *\"{}\"*
+Reminder text is *\"{}\"*
+If it's okay, please press *Confirm*
+If you want to change something, please type /cancel and start over",
+                time.format("%H:%M"),
+                text
+            );
+
+            let ok_button = InlineKeyboardButton::callback("Confirm", "Confirm");
+            let keyboard = InlineKeyboardMarkup::new(vec![vec![ok_button]]);
 
             dialogue
-                .update(GlobalState::CreateReminder(
-                    CreateReminderState::ReceiveFiringPeriod {
+                .update(GlobalState::CreateDailyReminder(
+                    CreateDailyReminderState::Confirm {
                         text,
                         firing_time: time,
                     },
                 ))
                 .await?;
+
+            bot.send_message(msg.chat.id, message_text)
+                .reply_markup(keyboard)
+                .parse_mode(teloxide::types::ParseMode::MarkdownV2)
+                .await?;
         }
         _ => {
             bot.send_message(
                 msg.chat.id,
-                "Could not parse time. Please send time in the following format: \"13:00\"",
+                "Could not parse time. Please send time in the following format: *13:00*",
             )
             .await?;
         }
@@ -98,35 +115,55 @@ async fn receive_firing_time(
     Ok(())
 }
 
-async fn receive_firing_period(
+async fn confirm_reminder(
     bot: Bot,
     dialogue: GlobalDialogue,
-    text: String,
-    firing_time: NaiveTime,
-    msg: Message
+    (text, firing_time): (String, NaiveTime),
+    query: CallbackQuery,
 ) -> HandlerResult {
+    let reminder = Reminder {
+        id: 0,
+        text,
+        state: crate::reminder::ReminderState::Pending,
+        fire_at: ReminderFireTime::new(firing_time),
+    };
+    
+    let message = format!("Saving your reminder in the database. {:?}", reminder);
+    
+    bot.answer_callback_query(&query.id).await?;
+    bot.send_message(query.chat_id().unwrap(), message).await?;
+    dialogue.exit().await?;
+    
     Ok(())
 }
 
-fn prepare_firing_period_keyboard() {
-    
-}
-
 pub fn schema() -> UpdateHandler<anyhow::Error> {
-    Update::filter_message()
+    dptree::entry()
         .branch(
-            teloxide::filter_command::<GlobalCommand, _>().branch(
-                case![GlobalState::Idle]
-                    .branch(case![GlobalCommand::CreateReminder].endpoint(create_reminder_start)),
-            ),
+            Update::filter_message()
+                .branch(teloxide::filter_command::<GlobalCommand, _>().branch(
+                    case![GlobalState::Idle].branch(
+                        case![GlobalCommand::CreateReminder].endpoint(create_daily_reminder_start),
+                    ),
+                ))
+                .branch(
+                    case![GlobalState::CreateDailyReminder(x)]
+                        .branch(
+                            case![CreateDailyReminderState::ReceiveText]
+                                .endpoint(receive_reminder_text),
+                        )
+                        .branch(
+                            case![CreateDailyReminderState::ReceiveFiringTime { text }]
+                                .endpoint(receive_firing_time),
+                        ),
+                ),
         )
         .branch(
-            case![GlobalState::CreateReminder(x)]
-                .branch(case![CreateReminderState::ReceiveText].endpoint(receive_reminder_text))
-                .branch(
-                    case![CreateReminderState::ReceiveFiringTime { text }]
-                        .endpoint(receive_firing_time),
-                )
-                .branch(case![CreateReminderState::ReceiveFiringPeriod { text, firing_time }].endpoint(receive_firing_period)),
+            Update::filter_callback_query().branch(
+                case![GlobalState::CreateDailyReminder(x)].branch(
+                    case![CreateDailyReminderState::Confirm { text, firing_time }]
+                        .endpoint(confirm_reminder),
+                ),
+            ),
         )
 }

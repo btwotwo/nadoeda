@@ -1,7 +1,7 @@
 mod create_reminder;
 use crate::appsettings;
 use chrono::NaiveTime;
-use create_reminder::CreateReminderState;
+use create_reminder::CreateDailyReminderState;
 use dptree::case;
 use dptree::prelude::*;
 use teloxide::{
@@ -15,7 +15,7 @@ type HandlerResult = anyhow::Result<()>;
 enum GlobalState {
     #[default]
     Idle,
-    CreateReminder(CreateReminderState),
+    CreateDailyReminder(CreateDailyReminderState),
 }
 
 pub struct TelegramInteractionInterface;
@@ -36,7 +36,7 @@ impl TelegramInteractionInterface {
             .branch(cancel_handler)
             .branch(create_reminder::schema())
             .branch(invalid_state_handler);
-
+        
         Dispatcher::builder(bot, schema)
             .dependencies(dptree::deps![InMemStorage::<GlobalState>::new()])
             .enable_ctrlc_handler()

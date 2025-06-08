@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use chrono::Timelike;
 
 #[derive(Debug)]
@@ -34,5 +36,6 @@ pub struct Reminder {
     pub id: ReminderId,
     pub state: ReminderState,
     pub fire_at: ReminderFireTime,
+    pub text: String,
 }
 
