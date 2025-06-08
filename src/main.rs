@@ -2,6 +2,7 @@
 mod appsettings;
 mod reminder;
 mod scheduling;
+mod telegram;
 mod telegram_bot;
 
 use anyhow::ensure;
@@ -14,7 +15,8 @@ use std::{
     fmt::Debug,
     marker::PhantomData,
 };
-use telegram_bot::{TelegramDeliveryChannel, TelegramInteractionInterface};
+use telegram::TelegramInteractionInterface;
+use telegram_bot::TelegramDeliveryChannel;
 use teloxide::{
     Bot,
     prelude::Requester,
@@ -52,9 +54,6 @@ async fn main() {
         TelegramInteractionInterface::start().await;
     });
 
-    bot.send_message("Hi :)", ChatId(185992715)).await;
-    tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
-    bot.send_message("Blocking for commands", ChatId(185992715))
-        .await;
+    bot.send_message("Restarted", ChatId(185992715)).await;
     interface_task.await;
 }
