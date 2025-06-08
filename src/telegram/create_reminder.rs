@@ -3,6 +3,7 @@ use dptree::case;
 use teloxide::dispatching::UpdateHandler;
 use teloxide::dispatching::dialogue::{self, InMemStorage};
 use teloxide::prelude::*;
+use teloxide::types::InlineKeyboardButton;
 use teloxide::{Bot, handler, types::Message};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
@@ -17,7 +18,7 @@ pub(super) enum CreateReminderState {
     },
     ReceiveFiringPeriod {
         text: String,
-        firing_time: String,
+        firing_time: NaiveTime,
     },
 }
 
@@ -73,9 +74,18 @@ async fn receive_firing_time(
         Some(Ok(time)) => {
             bot.send_message(
                 msg.chat.id,
-                format!("Great! Your reminder will fire at {}", time),
+                format!("Great! Your reminder will fire at {}.\n\nNow, please select how often reminder is going to be fired.", time),
             )
-            .await?;
+                .await?;
+
+            dialogue
+                .update(GlobalState::CreateReminder(
+                    CreateReminderState::ReceiveFiringPeriod {
+                        text,
+                        firing_time: time,
+                    },
+                ))
+                .await?;
         }
         _ => {
             bot.send_message(
@@ -86,6 +96,20 @@ async fn receive_firing_time(
         }
     }
     Ok(())
+}
+
+async fn receive_firing_period(
+    bot: Bot,
+    dialogue: GlobalDialogue,
+    text: String,
+    firing_time: NaiveTime,
+    msg: Message
+) -> HandlerResult {
+    Ok(())
+}
+
+fn prepare_firing_period_keyboard() {
+    
 }
 
 pub fn schema() -> UpdateHandler<anyhow::Error> {
@@ -102,6 +126,7 @@ pub fn schema() -> UpdateHandler<anyhow::Error> {
                 .branch(
                     case![CreateReminderState::ReceiveFiringTime { text }]
                         .endpoint(receive_firing_time),
-                ),
+                )
+                .branch(case![CreateReminderState::ReceiveFiringPeriod { text, firing_time }].endpoint(receive_firing_period)),
         )
 }
