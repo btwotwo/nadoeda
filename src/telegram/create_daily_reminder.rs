@@ -137,7 +137,7 @@ async fn confirm_reminder(
     Ok(())
 }
 
-pub fn schema() -> UpdateHandler<anyhow::Error> {
+pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
     dptree::entry()
         .branch(
             Update::filter_message()
