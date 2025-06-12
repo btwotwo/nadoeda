@@ -127,13 +127,13 @@ async fn confirm_reminder(
         state: crate::reminder::ReminderState::Pending,
         fire_at: ReminderFireTime::new(firing_time),
     };
-    
+
     let message = format!("Saving your reminder in the database. {:?}", reminder);
-    
+
     bot.answer_callback_query(&query.id).await?;
     bot.send_message(query.chat_id().unwrap(), message).await?;
     dialogue.exit().await?;
-    
+
     Ok(())
 }
 

@@ -1,7 +1,7 @@
-mod create_reminder;
+mod create_daily_reminder;
 use crate::appsettings;
 use chrono::NaiveTime;
-use create_reminder::CreateDailyReminderState;
+use create_daily_reminder::CreateDailyReminderState;
 use dptree::case;
 use dptree::prelude::*;
 use teloxide::{
@@ -34,7 +34,7 @@ impl TelegramInteractionInterface {
 
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(cancel_handler)
-            .branch(create_reminder::schema())
+            .branch(create_daily_reminder::schema())
             .branch(invalid_state_handler);
         
         Dispatcher::builder(bot, schema)

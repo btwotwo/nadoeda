@@ -160,6 +160,7 @@ mod tests {
             id: 1,
             state: ReminderState::Pending,
             fire_at: ReminderFireTime::new(NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap()),
+            text: "".to_string(),
         };
         let expected_delay =
             ReminderScheduler::get_target_delay(&reminder.fire_at.time(), Utc::now().naive_utc());
