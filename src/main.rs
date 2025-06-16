@@ -4,7 +4,7 @@ mod reminder;
 mod scheduling;
 mod telegram;
 mod telegram_bot;
-mod reminder_storage;
+mod storage;
 
 use anyhow::ensure;
 use appsettings::AppSettings;
