@@ -1,6 +1,6 @@
-# annoying_reminders
+# Nadoeda
 
-`annoying_reminders` is a Rust-powered reminder system that not just reminds — it **nags** you until you take action. In addition, it asks you if you *really* did what you were supposed to do. It supports one-off and recurring daily reminders.
+`nadoeda` is a Rust-powered reminder system that not just reminds — it **annoys** you until you take action. In addition, it asks you if you *really* did what you were supposed to do. It supports one-off and recurring daily reminders.
 
 ## ✨ Features
 

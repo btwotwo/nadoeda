@@ -42,24 +42,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "annoying_todos"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "config",
- "dotenvy",
- "log",
- "pretty_env_logger",
- "proptest",
- "proptest-arbitrary-interop",
- "serde",
- "teloxide",
- "tokio",
- "tokio-util",
-]
-
-[[package]]
 name = "anyhow"
 version = "1.0.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1129,6 +1111,24 @@ dependencies = [
  "libc",
  "wasi 0.11.0+wasi-snapshot-preview1",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "nadoeda"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "config",
+ "dotenvy",
+ "log",
+ "pretty_env_logger",
+ "proptest",
+ "proptest-arbitrary-interop",
+ "serde",
+ "teloxide",
+ "tokio",
+ "tokio-util",
 ]
 
 [[package]]
