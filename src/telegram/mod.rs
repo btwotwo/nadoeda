@@ -1,5 +1,7 @@
 mod create_daily_reminder;
 use crate::appsettings;
+use crate::storage::InMemoryReminderStorage;
+use crate::storage::ReminderStorage;
 use chrono::NaiveTime;
 use create_daily_reminder::CreateDailyReminderState;
 use dptree::case;
@@ -36,9 +38,9 @@ impl TelegramInteractionInterface {
             .branch(cancel_handler)
             .branch(create_daily_reminder::schema())
             .branch(invalid_state_handler);
-        
+        let storage = InMemoryReminderStorage::new();
         Dispatcher::builder(bot, schema)
-            .dependencies(dptree::deps![InMemStorage::<GlobalState>::new()])
+            .dependencies(dptree::deps![InMemStorage::<GlobalState>::new(), storage])
             .enable_ctrlc_handler()
             .build()
             .dispatch()

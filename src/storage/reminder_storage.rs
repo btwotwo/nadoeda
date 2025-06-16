@@ -1,28 +1,32 @@
-use std::collections::{HashMap, HashSet};
+use std::{collections::{HashMap, HashSet}, sync::Arc};
 
 use anyhow::anyhow;
+use async_trait::async_trait;
 use tokio::sync::RwLock;
 
 use crate::reminder::{Reminder, ReminderId};
 
-trait ReminderStorage {
+#[async_trait]
+pub trait ReminderStorage {
     async fn insert(&self, reminder: Reminder) -> anyhow::Result<ReminderId>;
     async fn update(&self, reminder: Reminder) -> anyhow::Result<ReminderId>;
     async fn get(&self, id: ReminderId) -> Option<Reminder>;
 }
 
+#[derive(Clone)]
 pub struct InMemoryReminderStorage {
-    store: RwLock<(ReminderId, HashMap<ReminderId, Reminder>)>,
+    store: Arc<RwLock<(ReminderId, HashMap<ReminderId, Reminder>)>>,
 }
 
 impl InMemoryReminderStorage {
     pub fn new() -> Self {
         InMemoryReminderStorage {
-            store: RwLock::new((0, HashMap::new()))
+            store: Arc::new(RwLock::new((0, HashMap::new())))
         }
     }
 }
 
+#[async_trait]
 impl ReminderStorage for InMemoryReminderStorage {
     async fn insert(&self, mut reminder: Reminder) -> anyhow::Result<ReminderId> {
         let mut store = self.store.write().await;

@@ -11,6 +11,7 @@ use appsettings::AppSettings;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use config::Config;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
+use storage::InMemoryReminderStorage;
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,

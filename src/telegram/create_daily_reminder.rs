@@ -7,6 +7,7 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, handler, types::Message};
 
 use crate::reminder::{Reminder, ReminderFireTime};
+use crate::storage::{InMemoryReminderStorage, ReminderStorage};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
@@ -116,6 +117,7 @@ If you want to change something, please type /cancel and start over",
 }
 
 async fn confirm_reminder(
+    storage: InMemoryReminderStorage,
     bot: Bot,
     dialogue: GlobalDialogue,
     (text, firing_time): (String, NaiveTime),
