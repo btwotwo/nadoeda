@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use chrono::Timelike;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ReminderState {
     Pending,
     Scheduled,
@@ -17,7 +17,7 @@ pub enum ReminderFiringPeriod {
 
 pub type ReminderId = u64;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ReminderFireTime(chrono::NaiveTime);
 
 impl ReminderFireTime {
@@ -31,7 +31,7 @@ impl ReminderFireTime {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Reminder {
     pub id: ReminderId,
     pub state: ReminderState,
