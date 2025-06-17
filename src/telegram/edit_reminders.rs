@@ -1,15 +1,21 @@
 use std::default;
 
+use chrono::format::{self, InternalFixed};
 use dptree::case;
+use teloxide::dispatching::dialogue::GetChatId;
 use teloxide::dispatching::{UpdateHandler, dialogue};
+use teloxide::types::ParseMode;
+use teloxide::utils::markdown;
 use teloxide::{handler, prelude::*};
+
+use crate::reminder::Reminder;
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult, HandlerStorageType};
 
 #[derive(Clone, Default)]
 pub(super) enum EditRemindersState {
     #[default]
-    ListReminders,
+    Start,
 }
 
 async fn list_reminders(
@@ -18,10 +24,35 @@ async fn list_reminders(
     dialogue: GlobalDialogue,
     msg: Message,
 ) -> HandlerResult {
-    let reminders = storage.get_all();
+    let reminders = storage.get_all().await;
+    let message = if reminders.is_empty() {
+        "You have to create at least one reminder\\!".to_string()
+    } else {
+        reminders
+            .iter()
+            .enumerate()
+            .map(|(i, reminder)| display_reminder(i + 1, reminder))
+            .collect::<Vec<String>>()
+            .join("\n\n")
+    };
     
-    todo!()
+    bot.send_message(msg.chat.id, message)
+        .parse_mode(ParseMode::MarkdownV2)
+        .await?;
+
+    Ok(())
 }
+
+fn display_reminder(order: usize, reminder: &Reminder) -> String {
+    format!(
+        "{order}: *{0}* \\(remind every day at *{1}*\\)
+Edit \\- /edit\\_{2}",
+        markdown::escape(&reminder.text),
+        reminder.fire_at.time().format("%H:%M"),
+        reminder.id
+    )
+}
+
 pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
     dptree::entry().branch(
         Update::filter_message().branch(

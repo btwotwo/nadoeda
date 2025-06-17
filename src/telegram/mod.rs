@@ -42,6 +42,7 @@ impl TelegramInteractionInterface {
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(cancel_handler)
             .branch(create_daily_reminder::schema())
+            .branch(edit_reminders::schema())
             .branch(invalid_state_handler);
 
         Dispatcher::builder(bot, schema)
