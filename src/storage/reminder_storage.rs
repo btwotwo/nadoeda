@@ -17,6 +17,7 @@ pub trait ReminderStorage {
     async fn insert(&self, reminder: NewReminder) -> anyhow::Result<ReminderId>;
     async fn update(&self, reminder: UpdateReminder) -> anyhow::Result<ReminderId>;
     async fn get(&self, id: ReminderId) -> Option<Reminder>;
+    async fn get_all(&self) -> Vec<Reminder>;
 }
 
 pub struct InMemoryReminderStorage {
@@ -68,5 +69,10 @@ impl ReminderStorage for InMemoryReminderStorage {
     async fn get(&self, id: ReminderId) -> Option<Reminder> {
         let store = self.store.read().await;
         store.1.get(&1).cloned()
+    }
+
+    async fn get_all(&self) -> Vec<Reminder> {
+        let store = self.store.read().await;
+        store.1.values().cloned().collect()
     }
 }
