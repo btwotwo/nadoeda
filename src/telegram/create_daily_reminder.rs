@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use chrono::NaiveTime;
 use dptree::case;
 use teloxide::dispatching::UpdateHandler;
@@ -7,7 +9,7 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, handler, types::Message};
 
 use crate::reminder::{Reminder, ReminderFireTime};
-use crate::storage::{InMemoryReminderStorage, ReminderStorage};
+use crate::storage::{InMemoryReminderStorage, NewReminder, ReminderStorage};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
@@ -117,23 +119,21 @@ If you want to change something, please type /cancel and start over",
 }
 
 async fn confirm_reminder(
-    storage: InMemoryReminderStorage,
+    storage: Arc<dyn ReminderStorage + Send + Sync>,
     bot: Bot,
     dialogue: GlobalDialogue,
     (text, firing_time): (String, NaiveTime),
     query: CallbackQuery,
 ) -> HandlerResult {
-    let reminder = Reminder {
-        id: 0,
+    let reminder = NewReminder {
         text,
-        state: crate::reminder::ReminderState::Pending,
         fire_at: ReminderFireTime::new(firing_time),
     };
 
-    let message = format!("Saving your reminder in the database. {:?}", reminder);
-
+    storage.insert(reminder).await?;
     bot.answer_callback_query(&query.id).await?;
-    bot.send_message(query.chat_id().unwrap(), message).await?;
+    
+    bot.send_message(query.chat_id().unwrap(), "Reminder saved!").await?;
     dialogue.exit().await?;
 
     Ok(())

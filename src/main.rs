@@ -10,12 +10,13 @@ use anyhow::ensure;
 use appsettings::AppSettings;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use config::Config;
+use reminder::Reminder;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
-use storage::InMemoryReminderStorage;
+use storage::{InMemoryReminderStorage, ReminderStorage};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
-    marker::PhantomData,
+    marker::PhantomData, sync::Arc,
 };
 use telegram::TelegramInteractionInterface;
 use telegram_bot::TelegramDeliveryChannel;
@@ -50,12 +51,13 @@ async fn main() {
     log::info!("Starting throw dice bot...");
 
     let settings = appsettings::get();
-
+    let storage: Arc<dyn ReminderStorage + Send + Sync> = Arc::new(InMemoryReminderStorage::new());
     let bot = TelegramDeliveryChannel::create();
     let interface_task = tokio::spawn(async move {
-        TelegramInteractionInterface::start().await;
+        TelegramInteractionInterface::start(storage.clone()).await;
     });
 
     bot.send_message("Restarted", ChatId(185992715)).await;
+
     interface_task.await;
 }

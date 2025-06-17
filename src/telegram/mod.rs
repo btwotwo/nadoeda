@@ -1,5 +1,8 @@
 mod create_daily_reminder;
+use std::sync::Arc;
+
 use crate::appsettings;
+use crate::storage;
 use crate::storage::InMemoryReminderStorage;
 use crate::storage::ReminderStorage;
 use chrono::NaiveTime;
@@ -22,7 +25,7 @@ enum GlobalState {
 
 pub struct TelegramInteractionInterface;
 impl TelegramInteractionInterface {
-    pub async fn start() {
+    pub async fn start(storage: Arc<dyn ReminderStorage + Send + Sync>) {
         let bot = Bot::new(appsettings::get().telegram.token.clone());
         log::info!("Creating Telegram interaction interface");
 
@@ -38,7 +41,8 @@ impl TelegramInteractionInterface {
             .branch(cancel_handler)
             .branch(create_daily_reminder::schema())
             .branch(invalid_state_handler);
-        let storage = InMemoryReminderStorage::new();
+        
+        
         Dispatcher::builder(bot, schema)
             .dependencies(dptree::deps![InMemStorage::<GlobalState>::new(), storage])
             .enable_ctrlc_handler()
@@ -55,9 +59,8 @@ async fn cancel(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResu
     Ok(())
 }
 async fn invalid_state(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResult {
-    bot.send_message(msg.chat.id, "Unable to handle the message.")
+    bot.send_message(msg.chat.id, "Unable to handle the message. Please try again or use /cancel to stop current operation.")
         .await?;
-    dialogue.exit().await?;
     Ok(())
 }
 

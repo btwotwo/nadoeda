@@ -19,6 +19,7 @@ teloxide = { version = "0.15.0", features = ["macros"] }
 log = "0.4"
 pretty_env_logger = "0.5"
 async-trait = "0.1.88"
+
 [dev-dependencies]
 proptest  = "1"
 proptest-arbitrary-interop = "0.1.0"
