@@ -51,7 +51,7 @@ async fn receive_reminder_text(bot: Bot, dialogue: GlobalDialogue, msg: Message)
         Some(text) => {
             let message = format!(
                 "Great! You will be reminded about \"{}\"\nNow, please enter time when reminder is going to be fired (e.g. 13:00)",
-                text
+                teloxide::utils::markdown::escape(text)
             );
             bot.send_message(msg.chat.id, message).await?;
             dialogue
@@ -118,7 +118,7 @@ If you want to change something, please type /cancel and start over",
     Ok(())
 }
 
-async fn confirm_reminder(
+async fn save_reminder(
     storage: Arc<dyn ReminderStorage + Send + Sync>,
     bot: Bot,
     dialogue: GlobalDialogue,
@@ -132,8 +132,9 @@ async fn confirm_reminder(
 
     storage.insert(reminder).await?;
     bot.answer_callback_query(&query.id).await?;
-    
-    bot.send_message(query.chat_id().unwrap(), "Reminder saved!").await?;
+
+    bot.send_message(query.chat_id().unwrap(), "Reminder saved!")
+        .await?;
     dialogue.exit().await?;
 
     Ok(())
@@ -164,7 +165,7 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
             Update::filter_callback_query().branch(
                 case![GlobalState::CreateDailyReminder(x)].branch(
                     case![CreateDailyReminderState::Confirm { text, firing_time }]
-                        .endpoint(confirm_reminder),
+                        .endpoint(save_reminder),
                 ),
             ),
         )

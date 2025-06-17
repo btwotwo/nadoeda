@@ -12,7 +12,7 @@ pub enum ReminderState {
 
 pub enum ReminderFiringPeriod {
     OneOff,
-    Daily
+    Daily,
 }
 
 pub type ReminderId = u64;
@@ -38,4 +38,3 @@ pub struct Reminder {
     pub fire_at: ReminderFireTime,
     pub text: String,
 }
-

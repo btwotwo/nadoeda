@@ -1,5 +1,5 @@
-mod reminder_storage;
 mod model;
+mod reminder_storage;
 
-pub use reminder_storage::{ReminderStorage, InMemoryReminderStorage};
 pub use model::NewReminder;
+pub use reminder_storage::{InMemoryReminderStorage, ReminderStorage};

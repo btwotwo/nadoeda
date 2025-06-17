@@ -2,7 +2,7 @@ use crate::reminder::{ReminderFireTime, ReminderId, ReminderState};
 
 pub struct NewReminder {
     pub text: String,
-    pub fire_at: ReminderFireTime
+    pub fire_at: ReminderFireTime,
 }
 
 pub struct UpdateReminder {

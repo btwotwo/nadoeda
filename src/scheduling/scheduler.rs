@@ -72,7 +72,7 @@ impl ReminderScheduler {
                 println!("Task for scheduling reminder was cancelled. {:?}", ctx.reminder);
             },
             _ = tokio::time::sleep(delay) => {
-                worker.handle_reminder(&ctx).await?;
+                worker.handle_reminder(ctx).await?;
             }
         };
         Ok(())

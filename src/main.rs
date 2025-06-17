@@ -2,9 +2,9 @@
 mod appsettings;
 mod reminder;
 mod scheduling;
+mod storage;
 mod telegram;
 mod telegram_bot;
-mod storage;
 
 use anyhow::ensure;
 use appsettings::AppSettings;
@@ -12,12 +12,13 @@ use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc}
 use config::Config;
 use reminder::Reminder;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
-use storage::{InMemoryReminderStorage, ReminderStorage};
 use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::Debug,
-    marker::PhantomData, sync::Arc,
+    marker::PhantomData,
+    sync::Arc,
 };
+use storage::{InMemoryReminderStorage, ReminderStorage};
 use telegram::TelegramInteractionInterface;
 use telegram_bot::TelegramDeliveryChannel;
 use teloxide::{

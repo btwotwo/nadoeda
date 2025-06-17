@@ -1,4 +1,5 @@
 mod create_daily_reminder;
+mod edit_reminders;
 use std::sync::Arc;
 
 use crate::appsettings;
@@ -15,6 +16,7 @@ use teloxide::{
 
 type GlobalDialogue = Dialogue<GlobalState, InMemStorage<GlobalState>>;
 type HandlerResult = anyhow::Result<()>;
+type HandlerStorageType = Arc<dyn ReminderStorage + Send + Sync>;
 
 #[derive(Default, Clone)]
 enum GlobalState {
@@ -25,7 +27,7 @@ enum GlobalState {
 
 pub struct TelegramInteractionInterface;
 impl TelegramInteractionInterface {
-    pub async fn start(storage: Arc<dyn ReminderStorage + Send + Sync>) {
+    pub async fn start(storage: HandlerStorageType) {
         let bot = Bot::new(appsettings::get().telegram.token.clone());
         log::info!("Creating Telegram interaction interface");
 
@@ -41,8 +43,7 @@ impl TelegramInteractionInterface {
             .branch(cancel_handler)
             .branch(create_daily_reminder::schema())
             .branch(invalid_state_handler);
-        
-        
+
         Dispatcher::builder(bot, schema)
             .dependencies(dptree::deps![InMemStorage::<GlobalState>::new(), storage])
             .enable_ctrlc_handler()
@@ -59,8 +60,11 @@ async fn cancel(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResu
     Ok(())
 }
 async fn invalid_state(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResult {
-    bot.send_message(msg.chat.id, "Unable to handle the message. Please try again or use /cancel to stop current operation.")
-        .await?;
+    bot.send_message(
+        msg.chat.id,
+        "Unable to handle the message. Please try again or use /cancel to stop current operation.",
+    )
+    .await?;
     Ok(())
 }
 
@@ -71,5 +75,6 @@ async fn invalid_state(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> Hand
 )]
 enum GlobalCommand {
     CreateReminder,
+    ListReminders,
     Cancel,
 }

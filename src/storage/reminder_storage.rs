@@ -1,4 +1,7 @@
-use std::{collections::{HashMap, HashSet}, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use anyhow::anyhow;
 use async_trait::async_trait;
@@ -7,7 +10,7 @@ use tokio::sync::RwLock;
 
 use crate::reminder::{Reminder, ReminderId, ReminderState};
 
-use super::{model::UpdateReminder, NewReminder};
+use super::{NewReminder, model::UpdateReminder};
 
 #[async_trait]
 pub trait ReminderStorage {
@@ -17,13 +20,13 @@ pub trait ReminderStorage {
 }
 
 pub struct InMemoryReminderStorage {
-    store: RwLock<(ReminderId, HashMap<ReminderId, Reminder>)>
+    store: RwLock<(ReminderId, HashMap<ReminderId, Reminder>)>,
 }
 
 impl InMemoryReminderStorage {
     pub fn new() -> Self {
         InMemoryReminderStorage {
-            store: RwLock::new((0, HashMap::new()))
+            store: RwLock::new((0, HashMap::new())),
         }
     }
 }
@@ -38,9 +41,9 @@ impl ReminderStorage for InMemoryReminderStorage {
             fire_at: reminder.fire_at,
             text: reminder.text,
             state: ReminderState::Pending,
-            id: current_id
+            id: current_id,
         };
-        
+
         storage.insert(current_id, reminder_insert);
 
         store.0 += 1;
