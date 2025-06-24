@@ -5,22 +5,36 @@ use super::{
     scheduler::{ReminderScheduler, ScheduledTask},
     worker::{ReminderWorker, WorkerFactory},
 };
+use async_trait::async_trait;
 use chrono::Duration;
 use std::{collections::HashMap, marker::PhantomData};
 use tokio::{sync::mpsc, task::JoinHandle};
 
-pub struct ReminderManager<TFactory: WorkerFactory> {
-    sender: ReminderManagerSender,
+
+pub struct ReminderManager {
+    channel_sender: ReminderManagerSender,
     manager_task_handle: JoinHandle<()>,
-    _marker: PhantomData<TFactory>,
 }
 
-impl<TFactory> ReminderManager<TFactory>
-where
-    TFactory: WorkerFactory + Send + 'static,
-    TFactory::Worker: ReminderWorker + Send,
+#[async_trait]
+pub trait ReminderManagerTrait {
+    async fn schedule_reminder(&self, reminder: Reminder) -> anyhow::Result<()>;
+}
+
+#[async_trait]
+impl ReminderManagerTrait for ReminderManager {
+    async fn schedule_reminder(&self, reminder: Reminder) -> anyhow::Result<()> {
+        self.channel_sender.schedule(reminder).await
+    }
+}
+
+
+impl ReminderManager
 {
-    pub fn create(worker_factory: TFactory) -> Self {
+    pub fn create<TFactory>(worker_factory: TFactory) -> Self where
+        TFactory: WorkerFactory + Send + 'static,
+        TFactory::Worker: ReminderWorker + Send,
+ {
         let (channel_sender, receiver) = mpsc::channel(64);
         let sender = ReminderManagerSender::new(channel_sender);
         let tasks_sender = sender.clone();
@@ -29,21 +43,20 @@ where
         });
 
         Self {
-            sender,
+            channel_sender: sender,
             manager_task_handle,
-            _marker: PhantomData,
         }
     }
 
-    pub async fn schedule_reminder(&self, reminder: Reminder) -> anyhow::Result<()> {
-        self.sender.schedule(reminder).await
-    }
 
-    async fn handle_messages(
+    async fn handle_messages<TFactory>(
         worker_factory: TFactory,
         mut receiver: mpsc::Receiver<ReminderManagerMessage>,
         sender: ReminderManagerSender,
-    ) {
+    ) where
+        TFactory: WorkerFactory + Send + 'static,
+        TFactory::Worker: ReminderWorker + Send,
+    {
         let mut tasks = HashMap::<ReminderId, ScheduledTask>::new();
         while let Some(msg) = receiver.recv().await {
             println!("manager got message! {:?}", msg);
@@ -86,12 +99,15 @@ where
         }
     }
 
-    fn handle_schedule_reminder(
+    fn handle_schedule_reminder<TFactory>(
         tasks: &mut HashMap<ReminderId, ScheduledTask>,
         worker_factory: &TFactory,
         reminder: Reminder,
         sender: ReminderManagerSender,
-    ) {
+    ) where
+        TFactory: WorkerFactory + Send + 'static,
+        TFactory::Worker: ReminderWorker + Send,
+    {
         let id = reminder.id;
         let context = SchedulerContext { sender, reminder };
         let worker = worker_factory.create_worker();
@@ -102,6 +118,7 @@ where
 
 #[cfg(test)]
 mod tests {
+    use async_trait::async_trait;
     use chrono::{Datelike, NaiveDate, NaiveDateTime, NaiveTime, NaiveWeek, Timelike, Utc};
     use std::{
         any::Any,
@@ -131,6 +148,7 @@ mod tests {
         received_tasks: Arc<Mutex<Vec<ReminderId>>>,
     }
 
+    #[async_trait]
     impl ReminderWorker for MockWorker {
         async fn handle_reminder(&self, context: &SchedulerContext) -> anyhow::Result<()> {
             let mut tasks = self.received_tasks.lock().await;

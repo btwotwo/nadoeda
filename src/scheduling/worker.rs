@@ -1,10 +1,13 @@
+use async_trait::async_trait;
+
 use super::common::SchedulerContext;
 
+#[async_trait]
 pub trait ReminderWorker {
-    fn handle_reminder(
+    async fn handle_reminder(
         &self,
         context: &SchedulerContext,
-    ) -> impl Future<Output = anyhow::Result<()>> + Send;
+    ) -> anyhow::Result<()>;
 }
 
 pub trait WorkerFactory {

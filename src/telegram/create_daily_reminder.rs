@@ -9,6 +9,7 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, handler, types::Message};
 
 use crate::reminder::{Reminder, ReminderFireTime};
+use crate::scheduling::ReminderManagerTrait;
 use crate::storage::{InMemoryReminderStorage, NewReminder, ReminderStorage};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
@@ -102,7 +103,7 @@ If you want to change something, please type /cancel and start over",
                 ))
                 .await?;
 
-            bot.send_message(msg.chat.id, message_text)
+            bot.send_message(msg.chat.id, message_txt)
                 .reply_markup(keyboard)
                 .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;

@@ -8,6 +8,7 @@ mod telegram_bot;
 
 use anyhow::ensure;
 use appsettings::AppSettings;
+use async_trait::async_trait;
 use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use config::Config;
 use reminder::Reminder;
@@ -39,6 +40,7 @@ impl WorkerFactory for PrinterWorkerFactory {
     }
 }
 
+#[async_trait]
 impl ReminderWorker for PrinterWorker {
     async fn handle_reminder(&self, ctx: &SchedulerContext) -> anyhow::Result<()> {
         println!("Firing reminder {:?}!", ctx.reminder);
