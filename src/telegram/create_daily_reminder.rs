@@ -25,7 +25,7 @@ pub(super) enum CreateDailyReminderState {
     Confirm {
         text: String,
         firing_time: NaiveTime,
-    },
+    }
 }
 
 async fn create_daily_reminder_start(
@@ -103,7 +103,7 @@ If you want to change something, please type /cancel and start over",
                 ))
                 .await?;
 
-            bot.send_message(msg.chat.id, message_txt)
+            bot.send_message(msg.chat.id, message_text)
                 .reply_markup(keyboard)
                 .parse_mode(teloxide::types::ParseMode::MarkdownV2)
                 .await?;
@@ -119,8 +119,9 @@ If you want to change something, please type /cancel and start over",
     Ok(())
 }
 
-async fn save_reminder(
+async fn confirm_reminder(
     storage: Arc<dyn ReminderStorage + Send + Sync>,
+    manager: Arc<dyn ReminderManagerTrait>,
     bot: Bot,
     dialogue: GlobalDialogue,
     (text, firing_time): (String, NaiveTime),
@@ -131,13 +132,17 @@ async fn save_reminder(
         fire_at: ReminderFireTime::new(firing_time),
     };
 
-    storage.insert(reminder).await?;
+    let reminder_id = storage.insert(reminder).await?;
     bot.answer_callback_query(&query.id).await?;
 
-    bot.send_message(query.chat_id().unwrap(), "Reminder saved!")
+    log::info!("Created reminder with id {}", reminder_id);
+    
+    let reminder = storage.get(reminder_id).await.expect("Reminder was just created.");
+    manager.schedule_reminder(reminder).await?;
+
+    bot.send_message(query.chat_id().unwrap(), "Reminder saved and scheduled.")
         .await?;
     dialogue.exit().await?;
-
     Ok(())
 }
 
@@ -166,7 +171,7 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
             Update::filter_callback_query().branch(
                 case![GlobalState::CreateDailyReminder(x)].branch(
                     case![CreateDailyReminderState::Confirm { text, firing_time }]
-                        .endpoint(save_reminder),
+                        .endpoint(confirm_reminder),
                 ),
             ),
         )

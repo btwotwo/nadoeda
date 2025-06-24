@@ -17,7 +17,7 @@ pub struct ReminderManager {
 }
 
 #[async_trait]
-pub trait ReminderManagerTrait {
+pub trait ReminderManagerTrait: Send + Sync {
     async fn schedule_reminder(&self, reminder: Reminder) -> anyhow::Result<()>;
 }
 
@@ -134,11 +134,9 @@ mod tests {
 
     use crate::{
         reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState},
-        scheduling::{
-            ReminderManager, ReminderWorker, SchedulerContext, WorkerFactory,
-            scheduler::ReminderScheduler,
-        },
     };
+
+    use super::*;
 
     struct MockWorkerFactory {
         received_tasks: Arc<Mutex<Vec<ReminderId>>>,

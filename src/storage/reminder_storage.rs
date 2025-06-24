@@ -5,6 +5,7 @@ use std::{
 
 use anyhow::anyhow;
 use async_trait::async_trait;
+use log::log;
 use teloxide::update_listeners::AsUpdateStream;
 use tokio::sync::RwLock;
 
@@ -48,7 +49,7 @@ impl ReminderStorage for InMemoryReminderStorage {
         storage.insert(current_id, reminder_insert);
 
         store.0 += 1;
-
+        log::info!("Returning current id {}", current_id);
         Ok(current_id)
     }
 
@@ -68,7 +69,7 @@ impl ReminderStorage for InMemoryReminderStorage {
 
     async fn get(&self, id: ReminderId) -> Option<Reminder> {
         let store = self.store.read().await;
-        store.1.get(&1).cloned()
+        store.1.get(&id).cloned()
     }
 
     async fn get_all(&self) -> Vec<Reminder> {

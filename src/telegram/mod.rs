@@ -3,9 +3,13 @@ mod edit_reminders;
 use std::sync::Arc;
 
 use crate::appsettings;
+use crate::scheduling::ReminderManager;
+use crate::scheduling::ReminderManagerTrait;
+use crate::scheduling::WorkerFactory;
 use crate::storage;
 use crate::storage::InMemoryReminderStorage;
 use crate::storage::ReminderStorage;
+use crate::PrinterWorkerFactory;
 use chrono::NaiveTime;
 use create_daily_reminder::CreateDailyReminderState;
 use dptree::case;
@@ -38,15 +42,17 @@ impl TelegramInteractionInterface {
 
         let invalid_state_handler =
             Update::filter_message().branch(dptree::endpoint(invalid_state));
-
+        let worker_factory = PrinterWorkerFactory;
+        let manager = ReminderManager::create(worker_factory);
+        let manager: Arc<dyn ReminderManagerTrait> = Arc::new(manager);
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(cancel_handler)
             .branch(create_daily_reminder::schema())
             .branch(edit_reminders::schema())
             .branch(invalid_state_handler);
-
+        
         Dispatcher::builder(bot, schema)
-            .dependencies(dptree::deps![InMemStorage::<GlobalState>::new(), storage])
+            .dependencies(dptree::deps![InMemStorage::<GlobalState>::new(), storage, manager])
             .enable_ctrlc_handler()
             .build()
             .dispatch()
