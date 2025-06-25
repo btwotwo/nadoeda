@@ -1,4 +1,5 @@
 use crate::reminder::Reminder;
+use anyhow::Ok;
 use tokio::sync::mpsc;
 
 #[derive(Debug)]
@@ -16,6 +17,7 @@ impl ReminderManagerSender {
     pub fn new(inner: mpsc::Sender<ReminderManagerMessage>) -> Self {
         ReminderManagerSender(inner)
     }
+    
     pub async fn schedule(&self, reminder: Reminder) -> anyhow::Result<()> {
         self.0
             .send(ReminderManagerMessage::Schedule(reminder))
@@ -23,6 +25,12 @@ impl ReminderManagerSender {
         Ok(())
     }
 
+    pub async fn cancel(&self, reminder: Reminder) -> anyhow::Result<()> {
+        self.0.send(ReminderManagerMessage::Cancel(reminder)).await?;
+
+        Ok(())
+    }
+    
     pub async fn notify_error(
         &self,
         error: anyhow::Error,

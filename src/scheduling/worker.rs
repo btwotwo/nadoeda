@@ -10,8 +10,8 @@ pub trait ReminderWorker {
     ) -> anyhow::Result<()>;
 }
 
-pub trait WorkerFactory {
-    type Worker: ReminderWorker;
+pub trait WorkerFactory: Send {
+    type Worker: ReminderWorker + Send + 'static;
 
     fn create_worker(&self) -> Self::Worker;
 }

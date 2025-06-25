@@ -10,7 +10,6 @@ use chrono::Duration;
 use std::{collections::HashMap, marker::PhantomData};
 use tokio::{sync::mpsc, task::JoinHandle};
 
-
 pub struct ReminderManager {
     channel_sender: ReminderManagerSender,
     manager_task_handle: JoinHandle<()>,
@@ -19,6 +18,7 @@ pub struct ReminderManager {
 #[async_trait]
 pub trait ReminderManagerTrait: Send + Sync {
     async fn schedule_reminder(&self, reminder: Reminder) -> anyhow::Result<()>;
+    async fn cancel_reminder(&self, reminder: Reminder) -> anyhow::Result<()>;
 }
 
 #[async_trait]
@@ -26,15 +26,13 @@ impl ReminderManagerTrait for ReminderManager {
     async fn schedule_reminder(&self, reminder: Reminder) -> anyhow::Result<()> {
         self.channel_sender.schedule(reminder).await
     }
+    async fn cancel_reminder(&self, reminder: Reminder) -> anyhow::Result<()> {
+        self.channel_sender.
+    }
 }
 
-
-impl ReminderManager
-{
-    pub fn create<TFactory>(worker_factory: TFactory) -> Self where
-        TFactory: WorkerFactory + Send + 'static,
-        TFactory::Worker: ReminderWorker + Send,
- {
+impl ReminderManager {
+    pub fn create(worker_factory: impl WorkerFactory + 'static) -> Self {
         let (channel_sender, receiver) = mpsc::channel(64);
         let sender = ReminderManagerSender::new(channel_sender);
         let tasks_sender = sender.clone();
@@ -48,15 +46,11 @@ impl ReminderManager
         }
     }
 
-
-    async fn handle_messages<TFactory>(
-        worker_factory: TFactory,
+    async fn handle_messages(
+        worker_factory: impl WorkerFactory,
         mut receiver: mpsc::Receiver<ReminderManagerMessage>,
         sender: ReminderManagerSender,
-    ) where
-        TFactory: WorkerFactory + Send + 'static,
-        TFactory::Worker: ReminderWorker + Send,
-    {
+    ) {
         let mut tasks = HashMap::<ReminderId, ScheduledTask>::new();
         while let Some(msg) = receiver.recv().await {
             println!("manager got message! {:?}", msg);
@@ -99,15 +93,12 @@ impl ReminderManager
         }
     }
 
-    fn handle_schedule_reminder<TFactory>(
+    fn handle_schedule_reminder(
         tasks: &mut HashMap<ReminderId, ScheduledTask>,
-        worker_factory: &TFactory,
+        worker_factory: &impl WorkerFactory,
         reminder: Reminder,
         sender: ReminderManagerSender,
-    ) where
-        TFactory: WorkerFactory + Send + 'static,
-        TFactory::Worker: ReminderWorker + Send,
-    {
+    ) {
         let id = reminder.id;
         let context = SchedulerContext { sender, reminder };
         let worker = worker_factory.create_worker();
@@ -132,18 +123,17 @@ mod tests {
     use tokio::{sync::Mutex, time};
     use tokio_util::sync::CancellationToken;
 
-    use crate::{
-        reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState},
-    };
+    use crate::{reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState}, scheduling::manager};
 
     use super::*;
 
+    type ReceivedTasks = Arc<Mutex<Vec<ReminderId>>>;
     struct MockWorkerFactory {
-        received_tasks: Arc<Mutex<Vec<ReminderId>>>,
+        received_tasks: ReceivedTasks
     }
 
     struct MockWorker {
-        received_tasks: Arc<Mutex<Vec<ReminderId>>>,
+        received_tasks: ReceivedTasks
     }
 
     #[async_trait]
@@ -167,20 +157,20 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     pub async fn basic_scheduling_test() {
-        let received_tasks = Arc::new(Mutex::new(vec![]));
-        let factory = MockWorkerFactory {
-            received_tasks: Arc::clone(&received_tasks),
-        };
-        let manager = ReminderManager::create(factory);
+        let received_tasks = received_tasks();
+        let manager = manager(&received_tasks);
         let reminder = Reminder {
             id: 1,
             state: ReminderState::Pending,
             fire_at: ReminderFireTime::new(NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap()),
             text: "".to_string(),
         };
+        
         let expected_delay =
             ReminderScheduler::get_target_delay(&reminder.fire_at.time(), Utc::now().naive_utc());
+        
         let reminder_id = reminder.id;
+        
         manager.schedule_reminder(reminder).await.unwrap();
         tokio::time::sleep(expected_delay.to_std().unwrap() + Duration::from_secs(15)).await;
         let tasks = received_tasks.lock().await;
@@ -188,4 +178,23 @@ mod tests {
         assert_eq!(tasks.len(), 1);
         assert_eq!(*tasks.first().unwrap(), reminder_id)
     }
+
+    #[tokio::test(start_paused = true)]
+    pub async fn cancelling_test() {
+        let received_tasks = received_tasks();
+        let manager = manager(&received_tasks);
+    }
+
+
+    fn manager(received_tasks: &ReceivedTasks) -> ReminderManager {
+        let factory = MockWorkerFactory {
+            received_tasks: Arc::clone(received_tasks),
+        };
+        
+        ReminderManager::create(factory)
+    }
+    
+    fn received_tasks() -> ReceivedTasks {
+        Arc::new(Mutex::new(vec![]))
+    }   
 }
