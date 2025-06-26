@@ -1,8 +1,4 @@
-use chrono::NaiveTime;
-use dptree::case;
-use teloxide::{
-    dispatching::dialogue, dispatching::dialogue::InMemStorage, macros::BotCommands, prelude::*,
-};
+use teloxide::prelude::*;
 
 use crate::appsettings;
 

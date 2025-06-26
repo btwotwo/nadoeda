@@ -1,4 +1,4 @@
-use crate::reminder::{ReminderFireTime, ReminderId, ReminderState};
+use crate::reminder::{ReminderFireTime, ReminderId};
 
 pub struct NewReminder {
     pub text: String,

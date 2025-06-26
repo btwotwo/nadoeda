@@ -4,10 +4,7 @@ use super::common::SchedulerContext;
 
 #[async_trait]
 pub trait ReminderWorker: Send + 'static {
-    async fn handle_reminder(
-        &self,
-        context: &SchedulerContext,
-    ) -> anyhow::Result<()>;
+    async fn handle_reminder(&self, context: &SchedulerContext) -> anyhow::Result<()>;
 }
 
 pub trait WorkerFactory: Send {

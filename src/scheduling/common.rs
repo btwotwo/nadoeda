@@ -17,7 +17,7 @@ impl ReminderManagerSender {
     pub fn new(inner: mpsc::Sender<ReminderManagerMessage>) -> Self {
         ReminderManagerSender(inner)
     }
-    
+
     pub async fn send_schedule(&self, reminder: Reminder) -> anyhow::Result<()> {
         self.0
             .send(ReminderManagerMessage::Schedule(reminder))
@@ -26,11 +26,13 @@ impl ReminderManagerSender {
     }
 
     pub async fn send_cancel(&self, reminder: Reminder) -> anyhow::Result<()> {
-        self.0.send(ReminderManagerMessage::Cancel(reminder)).await?;
+        self.0
+            .send(ReminderManagerMessage::Cancel(reminder))
+            .await?;
 
         Ok(())
     }
-    
+
     pub async fn notify_error(
         &self,
         error: anyhow::Error,
@@ -42,7 +44,7 @@ impl ReminderManagerSender {
 
         Ok(())
     }
-    
+
     pub async fn notify_completed(&self, reminder: Reminder) -> anyhow::Result<()> {
         self.0
             .send(ReminderManagerMessage::ScheduleFinished(reminder))

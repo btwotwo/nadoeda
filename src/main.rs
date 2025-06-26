@@ -1,4 +1,3 @@
-#![allow(dead_code, unused_imports, unused_variables)]
 mod appsettings;
 mod reminder;
 mod scheduling;
@@ -6,29 +5,16 @@ mod storage;
 mod telegram;
 mod telegram_bot;
 
-use anyhow::ensure;
-use appsettings::AppSettings;
 use async_trait::async_trait;
-use chrono::{DateTime, Days, Duration, NaiveDateTime, NaiveTime, TimeDelta, Utc};
-use config::Config;
-use reminder::Reminder;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
-use std::{
-    collections::{HashMap, HashSet, VecDeque},
-    fmt::Debug,
-    marker::PhantomData,
-    sync::Arc,
-};
+use std::sync::Arc;
 use storage::{InMemoryReminderStorage, ReminderStorage};
 use telegram::TelegramInteractionInterface;
 use telegram_bot::TelegramDeliveryChannel;
 use teloxide::{
-    Bot,
     prelude::Requester,
-    types::{ChatId, Message},
+    types::ChatId,
 };
-use tokio::{sync::mpsc, task::JoinHandle, time::Instant};
-use tokio_util::sync::CancellationToken;
 
 struct PrinterWorker;
 struct PrinterWorkerFactory;

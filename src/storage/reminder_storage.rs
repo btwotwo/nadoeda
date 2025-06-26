@@ -1,12 +1,6 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::collections::HashMap;
 
-use anyhow::anyhow;
 use async_trait::async_trait;
-use log::log;
-use teloxide::update_listeners::AsUpdateStream;
 use tokio::sync::RwLock;
 
 use crate::reminder::{Reminder, ReminderId, ReminderState};

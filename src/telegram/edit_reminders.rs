@@ -1,12 +1,9 @@
-use std::default;
 
-use chrono::format::{self, InternalFixed};
 use dptree::case;
-use teloxide::dispatching::dialogue::GetChatId;
-use teloxide::dispatching::{UpdateHandler, dialogue};
+use teloxide::dispatching::UpdateHandler;
 use teloxide::types::ParseMode;
 use teloxide::utils::markdown;
-use teloxide::{handler, prelude::*};
+use teloxide::prelude::*;
 
 use crate::reminder::Reminder;
 
@@ -35,7 +32,7 @@ async fn list_reminders(
             .collect::<Vec<String>>()
             .join("\n\n")
     };
-    
+
     bot.send_message(msg.chat.id, message)
         .parse_mode(ParseMode::MarkdownV2)
         .await?;

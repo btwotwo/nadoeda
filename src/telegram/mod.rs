@@ -2,18 +2,13 @@ mod create_daily_reminder;
 mod edit_reminders;
 use std::sync::Arc;
 
+use crate::PrinterWorkerFactory;
 use crate::appsettings;
 use crate::scheduling::ReminderManager;
 use crate::scheduling::ReminderManagerTrait;
-use crate::scheduling::WorkerFactory;
-use crate::storage;
-use crate::storage::InMemoryReminderStorage;
 use crate::storage::ReminderStorage;
-use crate::PrinterWorkerFactory;
-use chrono::NaiveTime;
 use create_daily_reminder::CreateDailyReminderState;
 use dptree::case;
-use dptree::prelude::*;
 use teloxide::{
     dispatching::dialogue, dispatching::dialogue::InMemStorage, macros::BotCommands, prelude::*,
 };
@@ -50,9 +45,13 @@ impl TelegramInteractionInterface {
             .branch(create_daily_reminder::schema())
             .branch(edit_reminders::schema())
             .branch(invalid_state_handler);
-        
+
         Dispatcher::builder(bot, schema)
-            .dependencies(dptree::deps![InMemStorage::<GlobalState>::new(), storage, manager])
+            .dependencies(dptree::deps![
+                InMemStorage::<GlobalState>::new(),
+                storage,
+                manager
+            ])
             .enable_ctrlc_handler()
             .build()
             .dispatch()

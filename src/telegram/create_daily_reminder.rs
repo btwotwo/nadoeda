@@ -3,14 +3,14 @@ use std::sync::Arc;
 use chrono::NaiveTime;
 use dptree::case;
 use teloxide::dispatching::UpdateHandler;
-use teloxide::dispatching::dialogue::{self, GetChatId, InMemStorage};
+use teloxide::dispatching::dialogue::GetChatId;
 use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
-use teloxide::{Bot, handler, types::Message};
+use teloxide::{Bot, types::Message};
 
-use crate::reminder::{Reminder, ReminderFireTime};
+use crate::reminder::ReminderFireTime;
 use crate::scheduling::ReminderManagerTrait;
-use crate::storage::{InMemoryReminderStorage, NewReminder, ReminderStorage};
+use crate::storage::{NewReminder, ReminderStorage};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
@@ -25,7 +25,7 @@ pub(super) enum CreateDailyReminderState {
     Confirm {
         text: String,
         firing_time: NaiveTime,
-    }
+    },
 }
 
 async fn create_daily_reminder_start(
@@ -136,8 +136,11 @@ async fn confirm_reminder(
     bot.answer_callback_query(&query.id).await?;
 
     log::info!("Created reminder with id {}", reminder_id);
-    
-    let reminder = storage.get(reminder_id).await.expect("Reminder was just created.");
+
+    let reminder = storage
+        .get(reminder_id)
+        .await
+        .expect("Reminder was just created.");
     manager.schedule_reminder(reminder).await?;
 
     bot.send_message(query.chat_id().unwrap(), "Reminder saved and scheduled.")
