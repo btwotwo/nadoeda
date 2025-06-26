@@ -112,12 +112,8 @@ impl ReminderManager {
 mod tests {
     use async_trait::async_trait;
     use chrono::{NaiveTime, Utc};
-    use std::{
-        sync::Arc,
-        time::Duration,
-    };
+    use std::{sync::Arc, time::Duration};
     use tokio::sync::Mutex;
-    
 
     use crate::reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState};
 

@@ -1,9 +1,8 @@
-
 use dptree::case;
 use teloxide::dispatching::UpdateHandler;
+use teloxide::prelude::*;
 use teloxide::types::ParseMode;
 use teloxide::utils::markdown;
-use teloxide::prelude::*;
 
 use crate::reminder::Reminder;
 
