@@ -24,10 +24,11 @@ pub trait ReminderManagerTrait: Send + Sync {
 #[async_trait]
 impl ReminderManagerTrait for ReminderManager {
     async fn schedule_reminder(&self, reminder: Reminder) -> anyhow::Result<()> {
-        self.channel_sender.schedule(reminder).await
+        self.channel_sender.send_schedule(reminder).await
     }
+    
     async fn cancel_reminder(&self, reminder: Reminder) -> anyhow::Result<()> {
-        self.channel_sender.
+        self.channel_sender.send_cancel(reminder).await
     }
 }
 
@@ -123,7 +124,7 @@ mod tests {
     use tokio::{sync::Mutex, time};
     use tokio_util::sync::CancellationToken;
 
-    use crate::{reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState}, scheduling::manager};
+    use crate::{reminder::{self, Reminder, ReminderFireTime, ReminderId, ReminderState}, scheduling::manager};
 
     use super::*;
 
@@ -159,12 +160,7 @@ mod tests {
     pub async fn basic_scheduling_test() {
         let received_tasks = received_tasks();
         let manager = manager(&received_tasks);
-        let reminder = Reminder {
-            id: 1,
-            state: ReminderState::Pending,
-            fire_at: ReminderFireTime::new(NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap()),
-            text: "".to_string(),
-        };
+        let reminder = reminder(NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap());
         
         let expected_delay =
             ReminderScheduler::get_target_delay(&reminder.fire_at.time(), Utc::now().naive_utc());
@@ -183,8 +179,36 @@ mod tests {
     pub async fn cancelling_test() {
         let received_tasks = received_tasks();
         let manager = manager(&received_tasks);
+        let reminder = reminder(NaiveTime::from_hms_milli_opt(12, 00, 00, 00).unwrap());
+        let expected_delay = expected_delay(&reminder);
+
+        let reminder_id = reminder.id;
+        manager.schedule_reminder(reminder.clone()).await.unwrap();
+        manager.cancel_reminder(reminder).await.unwrap();
+        tokio::time::sleep(expected_delay.to_std().unwrap() - Duration::from_secs(15)).await;
+
+        wait_for_trigger(expected_delay).await;
+
+        let tasks = received_tasks.lock().await;
+        assert_eq!(tasks.len(), 0);
     }
 
+    async fn wait_for_trigger(expected_delay: chrono::Duration) {
+        tokio::time::sleep(expected_delay.to_std().unwrap() + Duration::from_secs(15)).await
+    } 
+
+    fn expected_delay(reminder: &Reminder) -> chrono::Duration {
+        ReminderScheduler::get_target_delay(&reminder.fire_at.time(), Utc::now().naive_utc())
+    }
+
+    fn reminder(fire_at: NaiveTime) -> Reminder {
+        Reminder {
+            id: 1,
+            state: ReminderState::Pending,
+            fire_at: ReminderFireTime::new(fire_at),
+            text: "".to_string(),
+        }
+    }
 
     fn manager(received_tasks: &ReceivedTasks) -> ReminderManager {
         let factory = MockWorkerFactory {

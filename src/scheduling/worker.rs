@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use super::common::SchedulerContext;
 
 #[async_trait]
-pub trait ReminderWorker {
+pub trait ReminderWorker: Send + 'static {
     async fn handle_reminder(
         &self,
         context: &SchedulerContext,

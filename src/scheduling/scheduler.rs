@@ -28,7 +28,7 @@ pub struct ReminderScheduler;
 impl ReminderScheduler {
     pub fn schedule_reminder(
         context: SchedulerContext,
-        worker: impl ReminderWorker + Send + 'static,
+        worker: impl ReminderWorker
     ) -> ScheduledTask {
         let cancellation_token = CancellationToken::new();
         let task_cancellation_token = cancellation_token.child_token();

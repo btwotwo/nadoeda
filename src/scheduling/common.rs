@@ -18,14 +18,14 @@ impl ReminderManagerSender {
         ReminderManagerSender(inner)
     }
     
-    pub async fn schedule(&self, reminder: Reminder) -> anyhow::Result<()> {
+    pub async fn send_schedule(&self, reminder: Reminder) -> anyhow::Result<()> {
         self.0
             .send(ReminderManagerMessage::Schedule(reminder))
             .await?;
         Ok(())
     }
 
-    pub async fn cancel(&self, reminder: Reminder) -> anyhow::Result<()> {
+    pub async fn send_cancel(&self, reminder: Reminder) -> anyhow::Result<()> {
         self.0.send(ReminderManagerMessage::Cancel(reminder)).await?;
 
         Ok(())
@@ -42,6 +42,7 @@ impl ReminderManagerSender {
 
         Ok(())
     }
+    
     pub async fn notify_completed(&self, reminder: Reminder) -> anyhow::Result<()> {
         self.0
             .send(ReminderManagerMessage::ScheduleFinished(reminder))
