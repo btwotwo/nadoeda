@@ -1,14 +1,12 @@
 use teloxide::prelude::*;
 
-use crate::appsettings;
-
 pub struct TelegramDeliveryChannel {
     bot: Bot,
 }
 
 impl TelegramDeliveryChannel {
-    pub fn create() -> Self {
-        let bot = Bot::new(appsettings::get().telegram.token.clone());
+    pub fn create(token: String) -> Self {
+        let bot = Bot::new(token);
 
         Self { bot }
     }
