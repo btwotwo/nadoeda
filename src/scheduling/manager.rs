@@ -182,7 +182,6 @@ mod tests {
         let reminder = reminder(NaiveTime::from_hms_milli_opt(12, 00, 00, 00).unwrap());
         let expected_delay = expected_delay(&reminder);
 
-        let reminder_id = reminder.id;
         manager.schedule_reminder(reminder.clone()).await.unwrap();
         manager.cancel_reminder(reminder).await.unwrap();
         tokio::time::sleep(expected_delay.to_std().unwrap() - Duration::from_secs(15)).await;
@@ -191,6 +190,29 @@ mod tests {
 
         let tasks = received_tasks.lock().await;
         assert_eq!(tasks.len(), 0);
+    }
+
+    #[tokio::test(start_paused = true)]
+    pub async fn rescheduling_test() {
+        let received_tasks = received_tasks();
+        let manager = manager(&received_tasks);
+        let reminder = reminder(NaiveTime::from_hms_milli_opt(12, 00, 00, 00).unwrap());
+        let original_expected_delay = expected_delay(&reminder);
+
+        manager.schedule_reminder(reminder.clone()).await.unwrap();
+        let rescheduled_reminder = Reminder {
+            fire_at: ReminderFireTime::new(NaiveTime::from_hms_milli_opt(13, 0, 0, 0).unwrap()),
+            ..reminder
+        };
+        
+        let rescheduled_expected_delay = expected_delay(&rescheduled_reminder);
+        manager.schedule_reminder(rescheduled_reminder).await.unwrap();
+
+        wait_for_trigger(original_expected_delay).await;
+        assert_eq!(received_tasks.lock().await.len(), 0);
+
+        wait_for_trigger(rescheduled_expected_delay).await;
+        assert_eq!(received_tasks.lock().await.len(), 1);
     }
 
     async fn wait_for_trigger(expected_delay: chrono::Duration) {
