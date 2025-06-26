@@ -1,7 +1,9 @@
 mod create_daily_reminder;
 mod edit_reminders;
-use std::sync::Arc;
+mod delivery_channel;
 
+use std::sync::Arc;
+pub use delivery_channel::TelegramDeliveryChannel;
 use crate::PrinterWorkerFactory;
 use crate::appsettings;
 use crate::scheduling::ReminderManager;
@@ -28,7 +30,7 @@ pub struct TelegramInteractionInterface;
 impl TelegramInteractionInterface {
     pub async fn start(storage: HandlerStorageType) {
         let bot = Bot::new(appsettings::get().telegram.token.clone());
-        log::info!("Creating Telegram interaction interface");
+        log::info!("Starting Telegram interaction interface");
 
         let cancel_handler = Update::filter_message().branch(
             teloxide::filter_command::<GlobalCommand, _>()
@@ -38,8 +40,10 @@ impl TelegramInteractionInterface {
         let invalid_state_handler =
             Update::filter_message().branch(dptree::endpoint(invalid_state));
         let worker_factory = PrinterWorkerFactory;
+        
         let manager = ReminderManager::create(worker_factory);
         let manager: Arc<dyn ReminderManagerTrait> = Arc::new(manager);
+        
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(cancel_handler)
             .branch(create_daily_reminder::schema())

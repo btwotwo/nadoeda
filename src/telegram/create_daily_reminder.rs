@@ -120,7 +120,7 @@ If you want to change something, please type /cancel and start over",
 }
 
 async fn confirm_reminder(
-    storage: Arc<dyn ReminderStorage + Send + Sync>,
+    storage: Arc<dyn ReminderStorage>,
     manager: Arc<dyn ReminderManagerTrait>,
     bot: Bot,
     dialogue: GlobalDialogue,
@@ -141,10 +141,12 @@ async fn confirm_reminder(
         .get(reminder_id)
         .await
         .expect("Reminder was just created.");
+    
     manager.schedule_reminder(reminder).await?;
 
     bot.send_message(query.chat_id().unwrap(), "Reminder saved and scheduled.")
         .await?;
+    
     dialogue.exit().await?;
     Ok(())
 }

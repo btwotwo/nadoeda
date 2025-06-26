@@ -8,7 +8,7 @@ use crate::reminder::{Reminder, ReminderId, ReminderState};
 use super::{NewReminder, model::UpdateReminder};
 
 #[async_trait]
-pub trait ReminderStorage {
+pub trait ReminderStorage: Send+Sync {
     async fn insert(&self, reminder: NewReminder) -> anyhow::Result<ReminderId>;
     async fn update(&self, reminder: UpdateReminder) -> anyhow::Result<ReminderId>;
     async fn get(&self, id: ReminderId) -> Option<Reminder>;
