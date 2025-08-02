@@ -15,14 +15,22 @@ pub trait ReminderStorage: Send+Sync {
     async fn get_all(&self) -> Vec<Reminder>;
 }
 
+struct InMemoryReminderStore {
+    current_id: ReminderId,
+    storage: HashMap<ReminderId, Reminder>
+}
+
 pub struct InMemoryReminderStorage {
-    store: RwLock<(ReminderId, HashMap<ReminderId, Reminder>)>,
+    store: RwLock<InMemoryReminderStore>,
 }
 
 impl InMemoryReminderStorage {
     pub fn new() -> Self {
         InMemoryReminderStorage {
-            store: RwLock::new((0, HashMap::new())),
+            store: RwLock::new(InMemoryReminderStore {
+                current_id: 0,
+                storage: HashMap::new()
+            }),
         }
     }
 }
@@ -31,8 +39,8 @@ impl InMemoryReminderStorage {
 impl ReminderStorage for InMemoryReminderStorage {
     async fn insert(&self, reminder: NewReminder) -> anyhow::Result<ReminderId> {
         let mut store = self.store.write().await;
-        let current_id = store.0;
-        let storage = &mut store.1;
+        let current_id = store.current_id;
+        let storage = &mut store.storage;
         let reminder_insert = Reminder {
             fire_at: reminder.fire_at,
             text: reminder.text,
@@ -42,14 +50,14 @@ impl ReminderStorage for InMemoryReminderStorage {
 
         storage.insert(current_id, reminder_insert);
 
-        store.0 += 1;
+        store.current_id += 1;
         log::info!("Returning current id {}", current_id);
         Ok(current_id)
     }
 
     async fn update(&self, update_reminder: UpdateReminder) -> anyhow::Result<ReminderId> {
         let mut store = self.store.write().await;
-        let storage = &mut store.1;
+        let storage = &mut store.storage;
         let id = update_reminder.id;
         if let Some(mut reminder) = storage.remove(&id) {
             reminder.text = update_reminder.text.unwrap_or(reminder.text);
@@ -63,11 +71,11 @@ impl ReminderStorage for InMemoryReminderStorage {
 
     async fn get(&self, id: ReminderId) -> Option<Reminder> {
         let store = self.store.read().await;
-        store.1.get(&id).cloned()
+        store.storage.get(&id).cloned()
     }
 
     async fn get_all(&self) -> Vec<Reminder> {
         let store = self.store.read().await;
-        store.1.values().cloned().collect()
+        store.storage.values().cloned().collect()
     }
 }

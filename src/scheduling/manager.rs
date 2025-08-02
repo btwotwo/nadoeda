@@ -115,7 +115,7 @@ mod tests {
     use std::{sync::Arc, time::Duration};
     use tokio::sync::Mutex;
 
-    use crate::reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState};
+    use crate::{reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState}, scheduling::ReminderWorker};
 
     use super::*;
 
