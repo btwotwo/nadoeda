@@ -29,7 +29,7 @@ enum GlobalState {
 
 pub struct TelegramInteractionInterface;
 impl TelegramInteractionInterface {
-    pub async fn start(storage: HandlerReminderStorageType) {
+    pub async fn start(reminder_storage: HandlerReminderStorageType) {
         let bot = Bot::new(appsettings::get().telegram.token.clone());
         log::info!("Starting Telegram interaction interface");
 
@@ -54,7 +54,7 @@ impl TelegramInteractionInterface {
         Dispatcher::builder(bot, schema)
             .dependencies(dptree::deps![
                 InMemStorage::<GlobalState>::new(),
-                storage,
+                reminder_storage,
                 manager
             ])
             .enable_ctrlc_handler()

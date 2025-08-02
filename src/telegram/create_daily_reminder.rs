@@ -14,7 +14,7 @@ use crate::storage::{NewReminder, ReminderStorage};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult, HandlerReminderStorageType};
 
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub(super) enum CreatingDailyReminderState {
     #[default]
     Start,
@@ -133,7 +133,7 @@ async fn confirm_reminder(
     };
 
     let reminder_id = storage.insert(reminder).await?;
-    bot.answer_callback_query(&query.id).await?;
+    bot.answer_callback_query(query.id).await?;
 
     log::info!("Created reminder with id {}", reminder_id);
 
@@ -144,7 +144,7 @@ async fn confirm_reminder(
     
     manager.schedule_reminder(reminder).await?;
 
-    bot.send_message(query.chat_id().unwrap(), "Reminder saved and scheduled.")
+    bot.send_message(dialogue.chat_id(), "Reminder saved and scheduled.")
         .await?;
     
     dialogue.exit().await?;
@@ -184,10 +184,20 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 
 #[cfg(test)]
 mod tests {
+    use teloxide::{dispatching::dialogue::InMemStorage, dptree::deps};
+    use teloxide_tests::{MockBot, MockMessageText};
+
+    use crate::storage::InMemoryReminderStorage;
+
     use super::*;
     
     #[tokio::test]
     async fn test() {
-        
+        let reminder_storage = Arc::new(InMemoryReminderStorage::new());
+        let mut bot = MockBot::new(MockMessageText::new().text("/createreminder"), schema());
+        bot.dependencies(deps![reminder_storage, InMemStorage::<CreatingDailyReminderState>::new()]);
+        bot.set_state(CreatingDailyReminderState::Start).await;
+
+        bot.dispatch_and_check_last_text_and_state("Cool", CreatingDailyReminderState::WaitingForReminderText).await;
     }
 }
