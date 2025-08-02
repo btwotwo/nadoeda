@@ -998,15 +998,6 @@ checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "dptree"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d81175dab5ec79c30e0576df2ed2c244e1721720c302000bb321b107e82e265c"
-dependencies = [
- "futures",
-]
-
-[[package]]
-name = "dptree"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "db96968fcf52fe063a98c75df1d1f2b1fba304e7ae29b72fdc81c1165b7e2fd0"
@@ -2040,7 +2031,7 @@ dependencies = [
  "proptest",
  "proptest-arbitrary-interop",
  "serde",
- "teloxide 0.15.0",
+ "teloxide",
  "teloxide_tests",
  "tokio",
  "tokio-util",
@@ -3271,32 +3262,6 @@ checksum = "20f34339676cdcab560c9a82300c4c2581f68b9369aedf0fae86f2ff9565ff3e"
 
 [[package]]
 name = "teloxide"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17cb7c03a9217286fe11021dc72d5a674acbb0d3b24ba38d04f7efe7920e4948"
-dependencies = [
- "aquamarine",
- "bytes",
- "derive_more 1.0.0",
- "dptree 0.3.0",
- "either",
- "futures",
- "log",
- "mime",
- "pin-project",
- "serde",
- "serde_json",
- "teloxide-core 0.11.2",
- "teloxide-macros 0.9.0",
- "thiserror 2.0.12",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "url",
-]
-
-[[package]]
-name = "teloxide"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "84992abeed3ae42e8401b25d266d12bcba1def0abe59d22f6b9781167545f71e"
@@ -3304,7 +3269,7 @@ dependencies = [
  "aquamarine",
  "bytes",
  "derive_more 1.0.0",
- "dptree 0.5.1",
+ "dptree",
  "either",
  "futures",
  "log",
@@ -3313,45 +3278,13 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
- "teloxide-core 0.13.0",
- "teloxide-macros 0.10.0",
+ "teloxide-core",
+ "teloxide-macros",
  "thiserror 2.0.12",
  "tokio",
  "tokio-stream",
  "tokio-util",
  "url",
-]
-
-[[package]]
-name = "teloxide-core"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa2f70a3cd58c2b31ca899691b99573a40c6da713ab230bb78bbb4fb0b5c751a"
-dependencies = [
- "bitflags",
- "bytes",
- "chrono",
- "derive_more 1.0.0",
- "either",
- "futures",
- "log",
- "mime",
- "once_cell",
- "pin-project",
- "rc-box",
- "reqwest",
- "rgb",
- "serde",
- "serde_json",
- "serde_with",
- "stacker",
- "take_mut",
- "takecell",
- "thiserror 2.0.12",
- "tokio",
- "tokio-util",
- "url",
- "uuid",
 ]
 
 [[package]]
@@ -3384,18 +3317,6 @@ dependencies = [
  "tokio-util",
  "url",
  "uuid",
-]
-
-[[package]]
-name = "teloxide-macros"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3118a980ed2ec11f73d9495a6606905bd74726e3ffe95a42fbeb187ded8fdbf4"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -3434,7 +3355,7 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
- "teloxide 0.17.0",
+ "teloxide",
  "teloxide_tests_macros",
  "tokio",
  "tokio-util",
