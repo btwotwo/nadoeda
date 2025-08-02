@@ -12,17 +12,17 @@ use crate::reminder::ReminderFireTime;
 use crate::scheduling::ReminderManagerTrait;
 use crate::storage::{NewReminder, ReminderStorage};
 
-use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
+use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult, HandlerReminderStorageType};
 
 #[derive(Clone, Default)]
-pub(super) enum CreateDailyReminderState {
+pub(super) enum CreatingDailyReminderState {
     #[default]
     Start,
-    ReceiveText,
-    ReceiveFiringTime {
+    WaitingForReminderText,
+    WaitingForFiringTime {
         text: String,
     },
-    Confirm {
+    WaitingForConfirmation {
         text: String,
         firing_time: NaiveTime,
     },
@@ -40,8 +40,8 @@ async fn create_daily_reminder_start(
         .await?;
 
     dialogue
-        .update(GlobalState::CreateDailyReminder(
-            CreateDailyReminderState::ReceiveText,
+        .update(GlobalState::CreatingDailyReminder(
+            CreatingDailyReminderState::WaitingForReminderText,
         ))
         .await?;
 
@@ -56,8 +56,8 @@ async fn receive_reminder_text(bot: Bot, dialogue: GlobalDialogue, msg: Message)
             );
             bot.send_message(msg.chat.id, message).await?;
             dialogue
-                .update(GlobalState::CreateDailyReminder(
-                    CreateDailyReminderState::ReceiveFiringTime {
+                .update(GlobalState::CreatingDailyReminder(
+                    CreatingDailyReminderState::WaitingForFiringTime {
                         text: text.to_string(),
                     },
                 ))
@@ -95,8 +95,8 @@ If you want to change something, please type /cancel and start over",
             let keyboard = InlineKeyboardMarkup::new(vec![vec![ok_button]]);
 
             dialogue
-                .update(GlobalState::CreateDailyReminder(
-                    CreateDailyReminderState::Confirm {
+                .update(GlobalState::CreatingDailyReminder(
+                    CreatingDailyReminderState::WaitingForConfirmation {
                         text,
                         firing_time: time,
                     },
@@ -120,7 +120,7 @@ If you want to change something, please type /cancel and start over",
 }
 
 async fn confirm_reminder(
-    storage: Arc<dyn ReminderStorage>,
+    storage: HandlerReminderStorageType,
     manager: Arc<dyn ReminderManagerTrait>,
     bot: Bot,
     dialogue: GlobalDialogue,
@@ -161,23 +161,33 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
                     ),
                 ))
                 .branch(
-                    case![GlobalState::CreateDailyReminder(x)]
+                    case![GlobalState::CreatingDailyReminder(x)]
                         .branch(
-                            case![CreateDailyReminderState::ReceiveText]
+                            case![CreatingDailyReminderState::WaitingForReminderText]
                                 .endpoint(receive_reminder_text),
                         )
                         .branch(
-                            case![CreateDailyReminderState::ReceiveFiringTime { text }]
+                            case![CreatingDailyReminderState::WaitingForFiringTime { text }]
                                 .endpoint(receive_firing_time),
                         ),
                 ),
         )
         .branch(
             Update::filter_callback_query().branch(
-                case![GlobalState::CreateDailyReminder(x)].branch(
-                    case![CreateDailyReminderState::Confirm { text, firing_time }]
+                case![GlobalState::CreatingDailyReminder(x)].branch(
+                    case![CreatingDailyReminderState::WaitingForConfirmation { text, firing_time }]
                         .endpoint(confirm_reminder),
                 ),
             ),
         )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[tokio::test]
+    async fn test() {
+        
+    }
 }

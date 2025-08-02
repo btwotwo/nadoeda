@@ -6,7 +6,7 @@ use teloxide::utils::markdown;
 
 use crate::reminder::Reminder;
 
-use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult, HandlerStorageType};
+use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult, HandlerReminderStorageType};
 
 #[derive(Clone, Default)]
 pub(super) enum EditRemindersState {
@@ -15,7 +15,7 @@ pub(super) enum EditRemindersState {
 }
 
 async fn list_reminders(
-    storage: HandlerStorageType,
+    storage: HandlerReminderStorageType,
     bot: Bot,
     dialogue: GlobalDialogue,
     msg: Message,

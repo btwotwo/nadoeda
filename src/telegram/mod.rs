@@ -4,12 +4,13 @@ mod delivery_channel;
 
 use std::sync::Arc;
 pub use delivery_channel::TelegramDeliveryChannel;
+use crate::storage::InMemoryReminderStorage;
 use crate::PrinterWorkerFactory;
 use crate::appsettings;
 use crate::scheduling::ReminderManager;
 use crate::scheduling::ReminderManagerTrait;
 use crate::storage::ReminderStorage;
-use create_daily_reminder::CreateDailyReminderState;
+use create_daily_reminder::CreatingDailyReminderState;
 use dptree::case;
 use teloxide::{
     dispatching::dialogue, dispatching::dialogue::InMemStorage, macros::BotCommands, prelude::*,
@@ -17,18 +18,18 @@ use teloxide::{
 
 type GlobalDialogue = Dialogue<GlobalState, InMemStorage<GlobalState>>;
 type HandlerResult = anyhow::Result<()>;
-type HandlerStorageType = Arc<dyn ReminderStorage + Send + Sync>;
+type HandlerReminderStorageType = Arc<dyn ReminderStorage>;
 
 #[derive(Default, Clone)]
 enum GlobalState {
     #[default]
     Idle,
-    CreateDailyReminder(CreateDailyReminderState),
+    CreatingDailyReminder(CreatingDailyReminderState),
 }
 
 pub struct TelegramInteractionInterface;
 impl TelegramInteractionInterface {
-    pub async fn start(storage: HandlerStorageType) {
+    pub async fn start(storage: HandlerReminderStorageType) {
         let bot = Bot::new(appsettings::get().telegram.token.clone());
         log::info!("Starting Telegram interaction interface");
 
@@ -43,7 +44,7 @@ impl TelegramInteractionInterface {
         
         let manager = ReminderManager::create(worker_factory);
         let manager: Arc<dyn ReminderManagerTrait> = Arc::new(manager);
-        
+
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(cancel_handler)
             .branch(create_daily_reminder::schema())
