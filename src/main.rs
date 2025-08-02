@@ -33,7 +33,7 @@ impl ReminderWorker for PrinterWorker {
 async fn main() {
     pretty_env_logger::init();
 
-    let storage: Arc<dyn ReminderStorage + Send + Sync> = Arc::new(InMemoryReminderStorage::new());
+    let storage: Arc<dyn ReminderStorage> = Arc::new(InMemoryReminderStorage::new());
     let bot = TelegramDeliveryChannel::create(appsettings::get().telegram.token.clone());
     let interface_task = tokio::spawn(async move {
         TelegramInteractionInterface::start(storage.clone()).await;
