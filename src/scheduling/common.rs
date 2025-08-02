@@ -5,8 +5,8 @@ use tokio::sync::mpsc;
 #[derive(Debug)]
 pub enum ReminderManagerMessage {
     Schedule(Reminder),
-    ScheduleError(anyhow::Error, Reminder),
-    ScheduleFinished(Reminder),
+    WorkerError(anyhow::Error, Reminder),
+    WorkerFinished(Reminder),
     Cancel(Reminder),
 }
 
@@ -39,7 +39,7 @@ impl ReminderManagerSender {
         reminder: Reminder,
     ) -> anyhow::Result<()> {
         self.0
-            .send(ReminderManagerMessage::ScheduleError(error, reminder))
+            .send(ReminderManagerMessage::WorkerError(error, reminder))
             .await?;
 
         Ok(())
@@ -47,7 +47,7 @@ impl ReminderManagerSender {
 
     pub async fn notify_completed(&self, reminder: Reminder) -> anyhow::Result<()> {
         self.0
-            .send(ReminderManagerMessage::ScheduleFinished(reminder))
+            .send(ReminderManagerMessage::WorkerFinished(reminder))
             .await?;
 
         Ok(())

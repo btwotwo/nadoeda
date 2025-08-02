@@ -8,7 +8,7 @@ pub trait ReminderWorker: Send + 'static {
 }
 
 pub trait WorkerFactory: Send {
-    type Worker: ReminderWorker + Send + 'static;
+    type Worker: ReminderWorker;
 
     fn create_worker(&self) -> Self::Worker;
 }

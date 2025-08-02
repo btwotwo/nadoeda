@@ -69,15 +69,14 @@ impl ReminderManager {
                         sender.clone(),
                     )
                 }
-                ReminderManagerMessage::ScheduleError(error, reminder) => {
-                    let id = reminder.id;
+                ReminderManagerMessage::WorkerError(error, reminder) => {
                     tasks.remove(&reminder.id);
                     println!(
                         "Error executing task for reminder. error = {}, reminder_id = {}",
                         error, reminder.id
                     )
                 }
-                ReminderManagerMessage::ScheduleFinished(reminder) => {
+                ReminderManagerMessage::WorkerFinished(reminder) => {
                     tasks.remove(&reminder.id);
                     println!(
                         "Successfully executed worker for reminder. [reminder_id = {}]",
@@ -85,7 +84,6 @@ impl ReminderManager {
                     )
                 }
                 ReminderManagerMessage::Cancel(reminder) => {
-                    let id = reminder.id;
                     if let Some(task) = tasks.remove(&reminder.id) {
                         task.cancel(Duration::seconds(5).to_std().unwrap()).await;
                     }
