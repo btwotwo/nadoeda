@@ -108,9 +108,10 @@ impl ReminderManager {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Arc;
+
     use async_trait::async_trait;
-    use chrono::{NaiveTime, Utc};
-    use std::{sync::Arc, time::Duration};
+    use chrono::{DateTime, Duration, NaiveDateTime, NaiveTime, Utc};
     use tokio::sync::Mutex;
 
     use crate::{reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState}, scheduling::ReminderWorker};
@@ -157,7 +158,7 @@ mod tests {
         let reminder_id = reminder.id;
 
         manager.schedule_reminder(reminder).await.unwrap();
-        tokio::time::sleep(expected_delay.to_std().unwrap() + Duration::from_secs(15)).await;
+        tokio::time::sleep(expected_delay.to_std().unwrap() + std::time::Duration::from_secs(15)).await;
         let tasks = received_tasks.lock().await;
 
         assert_eq!(tasks.len(), 1);
@@ -173,7 +174,7 @@ mod tests {
 
         manager.schedule_reminder(reminder.clone()).await.unwrap();
         manager.cancel_reminder(reminder).await.unwrap();
-        tokio::time::sleep(expected_delay.to_std().unwrap() - Duration::from_secs(15)).await;
+        tokio::time::sleep(expected_delay.to_std().unwrap() - std::time::Duration::from_secs(15)).await;
 
         wait_for_trigger(expected_delay).await;
 
@@ -185,16 +186,20 @@ mod tests {
     pub async fn rescheduling_test() {
         let received_tasks = received_tasks();
         let manager = manager(&received_tasks);
-        let reminder = reminder(NaiveTime::from_hms_milli_opt(12, 00, 00, 00).unwrap());
-        let original_expected_delay = expected_delay(&reminder);
+        let original_time = Utc::now().time() + Duration::hours(1);
+        let reschedule_time = original_time + Duration::hours(1);
 
+        let reminder = reminder(original_time);
+        let original_expected_delay = expected_delay(&reminder);
+        
         manager.schedule_reminder(reminder.clone()).await.unwrap();
         let rescheduled_reminder = Reminder {
-            fire_at: ReminderFireTime::new(NaiveTime::from_hms_milli_opt(13, 0, 0, 0).unwrap()),
+            fire_at: ReminderFireTime::new(reschedule_time),
             ..reminder
         };
 
         let rescheduled_expected_delay = expected_delay(&rescheduled_reminder);
+
         manager
             .schedule_reminder(rescheduled_reminder)
             .await
@@ -208,7 +213,7 @@ mod tests {
     }
 
     async fn wait_for_trigger(expected_delay: chrono::Duration) {
-        tokio::time::sleep(expected_delay.to_std().unwrap() + Duration::from_secs(15)).await
+        tokio::time::sleep(expected_delay.to_std().unwrap() + std::time::Duration::from_secs(15)).await
     }
 
     fn expected_delay(reminder: &Reminder) -> chrono::Duration {
