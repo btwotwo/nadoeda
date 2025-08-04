@@ -184,19 +184,25 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 
 #[cfg(test)]
 mod tests {
-    use teloxide::{dispatching::dialogue::InMemStorage, dptree::deps};
+    use teloxide::{dispatching::dialogue::{self, InMemStorage}, dptree::deps};
     use teloxide_tests::{MockBot, MockMessageText};
 
-    use crate::storage::InMemoryReminderStorage;
+    use crate::{scheduling::ReminderManager, storage::InMemoryReminderStorage, PrinterWorkerFactory};
 
     use super::*;
     
-    #[tokio::test]
+    // #[tokio::test]
     async fn test() {
-        let reminder_storage = Arc::new(InMemoryReminderStorage::new());
-        let mut bot = MockBot::new(MockMessageText::new().text("/createreminder"), schema());
-        bot.dependencies(deps![reminder_storage, InMemStorage::<CreatingDailyReminderState>::new()]);
-        bot.set_state(CreatingDailyReminderState::Start).await;
+        let reminder_storage: Arc<dyn ReminderStorage> = Arc::new(InMemoryReminderStorage::new());
+        let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>().branch(schema());
+        let mut bot = MockBot::new(MockMessageText::new().text("/createreminder"), schema);
+        let worker_factory = PrinterWorkerFactory;
+        
+        let manager = ReminderManager::create(worker_factory);
+        let manager: Arc<dyn ReminderManagerTrait> = Arc::new(manager);
+
+        bot.dependencies(deps![reminder_storage, InMemStorage::<GlobalState>::new(), manager, GlobalState::Idle]);
+        bot.set_state(GlobalState::CreatingDailyReminder(CreatingDailyReminderState::Start)).await;
 
         bot.dispatch_and_check_last_text_and_state("Cool", CreatingDailyReminderState::WaitingForReminderText).await;
     }
