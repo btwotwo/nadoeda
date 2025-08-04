@@ -191,19 +191,19 @@ mod tests {
 
     use super::*;
     
-    // #[tokio::test]
+    #[tokio::test]
     async fn test() {
         let reminder_storage: Arc<dyn ReminderStorage> = Arc::new(InMemoryReminderStorage::new());
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>().branch(schema());
-        let mut bot = MockBot::new(MockMessageText::new().text("/createreminder"), schema);
+        let mut bot = MockBot::new(MockMessageText::new().text("New Reminder"), schema);
         let worker_factory = PrinterWorkerFactory;
         
         let manager = ReminderManager::create(worker_factory);
         let manager: Arc<dyn ReminderManagerTrait> = Arc::new(manager);
 
         bot.dependencies(deps![reminder_storage, InMemStorage::<GlobalState>::new(), manager, GlobalState::Idle]);
-        bot.set_state(GlobalState::CreatingDailyReminder(CreatingDailyReminderState::Start)).await;
+        bot.set_state(GlobalState::CreatingDailyReminder(CreatingDailyReminderState::WaitingForReminderText)).await;
 
-        bot.dispatch_and_check_last_text_and_state("Cool", CreatingDailyReminderState::WaitingForReminderText).await;
+        bot.dispatch_and_check_state(GlobalState::CreatingDailyReminder(CreatingDailyReminderState::WaitingForFiringTime { text: "New Reminder".to_string() })).await;
     }
 }

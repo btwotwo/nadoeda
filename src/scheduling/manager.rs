@@ -199,7 +199,7 @@ mod tests {
         };
 
         let rescheduled_expected_delay = expected_delay(&rescheduled_reminder);
-
+        
         manager
             .schedule_reminder(rescheduled_reminder)
             .await

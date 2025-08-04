@@ -20,7 +20,7 @@ type GlobalDialogue = Dialogue<GlobalState, InMemStorage<GlobalState>>;
 type HandlerResult = anyhow::Result<()>;
 type HandlerReminderStorageType = Arc<dyn ReminderStorage>;
 
-#[derive(Default, Clone)]
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
 enum GlobalState {
     #[default]
     Idle,
