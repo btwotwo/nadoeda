@@ -1,11 +1,15 @@
 use async_trait::async_trait;
 
+use crate::reminder::Reminder;
+
 use super::common::SchedulerContext;
 
 #[async_trait]
 pub trait ReminderWorker: Send + 'static {
     async fn handle_reminder(&self, context: &SchedulerContext) -> anyhow::Result<()>;
 }
+
+
 
 pub trait WorkerFactory: Send {
     type Worker: ReminderWorker;

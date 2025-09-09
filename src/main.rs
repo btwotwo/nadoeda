@@ -39,7 +39,6 @@ async fn main() {
         TelegramInteractionInterface::start(storage.clone()).await;
     });
 
-    bot.send_message("Restarted", ChatId(185992715)).await;
 
     interface_task.await;
 }
