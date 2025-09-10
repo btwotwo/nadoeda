@@ -16,7 +16,7 @@ impl ScheduledTask {
             cancellation_token,
         }
     }
-    
+
     pub async fn cancel(self, timeout: std::time::Duration) {
         self.cancellation_token.cancel();
         let cancel_with_timeout = time::timeout(timeout, self.task_handle);
