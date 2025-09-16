@@ -1,15 +1,28 @@
+use std::collections::HashMap;
+
+use super::actor_scheduler_task::ActorReminderSchedulerTask;
 use chrono::{NaiveDateTime, NaiveTime, TimeDelta};
+use tokio::sync::mpsc;
+use tokio::task::JoinHandle;
+
+use crate::{reminder::ReminderId, scheduling::common::ReminderManagerMessage};
 
 use super::{ReminderSchedulerV2, ReminderWorkerV2, ScheduleRequest, ScheduledReminder};
 
-pub struct ActorReminderScheduler;
-
-struct ActorReminderSchedulerState;
+pub struct ActorReminderScheduler {
+    actor_task_handle: JoinHandle<()>,
+    actor_sender: mpsc::Sender<ReminderManagerMessage>,
+}
 
 impl ActorReminderScheduler {
     pub fn start() -> Self {
-        let (sender, receiver) = tokio::sync::mpsc::channel(128);
-        todo!()
+        let (sender, receiver) = mpsc::channel(128);
+        let actor_task_handle = tokio::spawn(async move {});
+
+        Self {
+            actor_task_handle,
+            actor_sender: sender,
+        }
     }
 }
 
@@ -26,7 +39,6 @@ impl ReminderSchedulerV2 for ActorReminderScheduler {
         todo!()
     }
 }
-
 
 fn get_target_delay(fire_at: &NaiveTime, now: NaiveDateTime) -> chrono::Duration {
     let max_delta = TimeDelta::new(10, 0).expect("This is always in bounds.");
@@ -116,7 +128,8 @@ mod tests {
     }
 
     fn get_scheduler() -> ActorReminderScheduler {
-        ActorReminderScheduler
+        // ActorReminderScheduler
+        todo!()
     }
 
     fn get_reminder() -> Reminder {
