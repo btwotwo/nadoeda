@@ -3,6 +3,7 @@ mod reminder;
 mod scheduling;
 mod storage;
 mod telegram;
+mod actor;
 
 use async_trait::async_trait;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
