@@ -20,14 +20,23 @@ pub struct ActorContext<TActor: Actor> {
     sender: mpsc::UnboundedSender<TActor::Message>,
 }
 
+#[derive(Clone)]
+pub struct ActorReference<TActor: Actor>(mpsc::UnboundedSender<TActor::Message>);
+
+impl<TActor: Actor> ActorReference<TActor> {
+    pub fn send_message(&self, msg: TActor::Message) {
+        self.0.send(msg).unwrap()
+    }    
+}
+
 pub struct ActorHandle<TActor: Actor> {
     task: JoinHandle<()>,
-    sender: mpsc::UnboundedSender<TActor::Message>,
+    reference: ActorReference<TActor>
 }
 
 impl<TActor: Actor> ActorHandle<TActor> {
-    pub fn send_message(&self, msg: TActor::Message) {
-        self.sender.send(msg).unwrap()
+    pub fn actor_reference(&self) -> &ActorReference<TActor> {
+        &self.reference
     }
 }
 

@@ -1,8 +1,6 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
-use super::
-    actor_scheduler_state::{ActorReminderSchedulerState}
-;
+use super::actor_scheduler_state::ActorReminderSchedulerState;
 use async_trait::async_trait;
 use chrono::{NaiveDateTime, NaiveTime, TimeDelta};
 use tokio::sync::mpsc;
@@ -22,8 +20,8 @@ pub enum ReminderManagerMessageV2 {
         worker: Box<dyn ReminderWorkerV2>,
     },
     CancelReminder {
-        reminder: ScheduledReminder
-    }
+        reminder: ScheduledReminder,
+    },
 }
 
 pub struct ActorReminderScheduler {
@@ -41,11 +39,16 @@ impl Actor for ActorReminderScheduler {
         state: Self::State,
         context: &ActorContext<Self>,
     ) -> anyhow::Result<Self::State> {
-        todo!()
+        match msg {
+            ReminderManagerMessageV2::ScheduleReminder { reminder, worker } => todo!(),
+            ReminderManagerMessageV2::CancelReminder { reminder } => todo!(),
+        }
+
+        Ok(state)
     }
 
     async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State> {
-        todo!()
+        Ok(ActorReminderSchedulerState {})
     }
 }
 
@@ -61,36 +64,21 @@ impl ReminderSchedulerV2 for ActorReminderScheduler {
             worker,
         };
 
-        self.actor_handle.send_message(message);
-        
+        self.actor_handle.actor_reference().send_message(message);
+
         Ok(ScheduledReminder { id: reminder_id })
     }
 
     fn cancel_reminder(&mut self, scheduled_reminder: ScheduledReminder) -> anyhow::Result<()> {
-        let message = ReminderManagerMessageV2::CancelReminder { reminder: scheduled_reminder };
+        let message = ReminderManagerMessageV2::CancelReminder {
+            reminder: scheduled_reminder,
+        };
         self.actor_handle.send_message(message);
 
         Ok(())
     }
 }
 
-fn get_target_delay(fire_at: &NaiveTime, now: NaiveDateTime) -> chrono::Duration {
-    let max_delta = TimeDelta::new(10, 0).expect("This is always in bounds.");
-    let delta = *fire_at - now.time();
-
-    let today = now.date();
-    let target_date = if delta <= max_delta {
-        today
-            .checked_add_signed(TimeDelta::days(1))
-            .expect("Not realistic to overflow")
-    } else {
-        today
-    };
-
-    let target_datetime = target_date.and_time(*fire_at);
-
-    target_datetime - now
-}
 
 #[cfg(test)]
 mod tests {
