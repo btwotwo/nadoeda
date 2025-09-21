@@ -1,28 +1,51 @@
 use std::collections::HashMap;
 
-use super::actor_scheduler_task::ActorReminderSchedulerTask;
+use super::
+    actor_scheduler_state::{ActorReminderSchedulerState}
+;
+use async_trait::async_trait;
 use chrono::{NaiveDateTime, NaiveTime, TimeDelta};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
-use crate::{reminder::ReminderId, scheduling::common::ReminderManagerMessage};
+use crate::{
+    actor::{Actor, ActorContext, ActorHandle},
+    reminder::{self, Reminder, ReminderId},
+    scheduling::common::ReminderManagerMessage,
+};
 
 use super::{ReminderSchedulerV2, ReminderWorkerV2, ScheduleRequest, ScheduledReminder};
 
-pub struct ActorReminderScheduler {
-    actor_task_handle: JoinHandle<()>,
-    actor_sender: mpsc::Sender<ReminderManagerMessage>,
+pub enum ReminderManagerMessageV2 {
+    ScheduleReminder {
+        reminder: Reminder,
+        worker: Box<dyn ReminderWorkerV2>,
+    },
+    CancelReminder {
+        reminder: ScheduledReminder
+    }
 }
 
-impl ActorReminderScheduler {
-    pub fn start() -> Self {
-        let (sender, receiver) = mpsc::channel(128);
-        let actor_task_handle = tokio::spawn(async move {});
+pub struct ActorReminderScheduler {
+    actor_handle: ActorHandle<Self>,
+}
 
-        Self {
-            actor_task_handle,
-            actor_sender: sender,
-        }
+#[async_trait]
+impl Actor for ActorReminderScheduler {
+    type Message = ReminderManagerMessageV2;
+    type State = ActorReminderSchedulerState;
+    type InitArgs = ();
+
+    fn handle_message(
+        msg: Self::Message,
+        state: Self::State,
+        context: &ActorContext<Self>,
+    ) -> anyhow::Result<Self::State> {
+        todo!()
+    }
+
+    async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State> {
+        todo!()
     }
 }
 
@@ -30,13 +53,24 @@ impl ReminderSchedulerV2 for ActorReminderScheduler {
     fn schedule_reminder(
         &mut self,
         schedule_request: ScheduleRequest,
-        worker: impl ReminderWorkerV2,
+        worker: Box<dyn ReminderWorkerV2>,
     ) -> anyhow::Result<ScheduledReminder> {
-        todo!()
+        let reminder_id = schedule_request.reminder.id;
+        let message = ReminderManagerMessageV2::ScheduleReminder {
+            reminder: schedule_request.reminder,
+            worker,
+        };
+
+        self.actor_handle.send_message(message);
+        
+        Ok(ScheduledReminder { id: reminder_id })
     }
 
     fn cancel_reminder(&mut self, scheduled_reminder: ScheduledReminder) -> anyhow::Result<()> {
-        todo!()
+        let message = ReminderManagerMessageV2::CancelReminder { reminder: scheduled_reminder };
+        self.actor_handle.send_message(message);
+
+        Ok(())
     }
 }
 
@@ -98,7 +132,7 @@ mod tests {
         let schedule_request = ScheduleRequest { reminder };
 
         scheduler
-            .schedule_reminder(schedule_request, worker)
+            .schedule_reminder(schedule_request, Box::new(worker))
             .unwrap();
         tokio::time::sleep(target_delay.to_std().unwrap()).await;
 
@@ -115,7 +149,7 @@ mod tests {
         let schedule_request = ScheduleRequest { reminder };
 
         scheduler
-            .schedule_reminder(schedule_request, worker)
+            .schedule_reminder(schedule_request, Box::new(worker))
             .unwrap();
         tokio::time::sleep(target_delay.to_std().unwrap() - std::time::Duration::from_secs(60))
             .await;
