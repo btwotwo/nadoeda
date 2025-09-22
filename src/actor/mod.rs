@@ -1,5 +1,11 @@
+use anyhow::Context;
 use async_trait::async_trait;
 use tokio::{sync::mpsc, task::JoinHandle};
+
+pub enum ActorStatus<S> {
+    Continue(S),
+    Stop
+}
 
 #[async_trait]
 pub trait Actor: Sized {
@@ -11,8 +17,8 @@ pub trait Actor: Sized {
         msg: Self::Message,
         state: Self::State,
         context: &ActorContext<Self>,
-    ) -> anyhow::Result<Self::State>;
-    
+    ) -> anyhow::Result<ActorStatus<Self::State>>;
+
     async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State>;
 }
 
@@ -26,12 +32,12 @@ pub struct ActorReference<TActor: Actor>(mpsc::UnboundedSender<TActor::Message>)
 impl<TActor: Actor> ActorReference<TActor> {
     pub fn send_message(&self, msg: TActor::Message) {
         self.0.send(msg).unwrap()
-    }    
+    }
 }
 
 pub struct ActorHandle<TActor: Actor> {
     task: JoinHandle<()>,
-    reference: ActorReference<TActor>
+    reference: ActorReference<TActor>,
 }
 
 impl<TActor: Actor> ActorHandle<TActor> {
@@ -40,10 +46,12 @@ impl<TActor: Actor> ActorHandle<TActor> {
     }
 }
 
-pub async fn start<TActor: Actor>(args: TActor::InitArgs) -> ActorHandle<TActor> {
+pub async fn start<TActor: Actor>(args: TActor::InitArgs) -> anyhow::Result<ActorHandle<TActor>> {
     let (sender, mut receiver) = mpsc::unbounded_channel();
     let sender_clone = sender.clone();
-    let initial_state = TActor::init_state(args).await.unwrap();
+    let initial_state = TActor::init_state(args)
+        .await
+        .context("Failed to initialize actor state.")?;
 
     let task = tokio::spawn(async move {
         let mut state = initial_state;
@@ -51,9 +59,24 @@ pub async fn start<TActor: Actor>(args: TActor::InitArgs) -> ActorHandle<TActor>
             sender: sender_clone,
         };
         while let Some(msg) = receiver.recv().await {
-            state = TActor::handle_message(msg, state, &context).unwrap();
+            let status = TActor::handle_message(msg, state, &context);
+            match status {
+                Ok(status) => match status {
+                    ActorStatus::Continue(new_state) => {
+                        state = new_state
+                    },
+                    ActorStatus::Stop => break
+                }
+                Err(e) => {
+                    log::error!("Actor returned an error while processing the message. {}", e);
+                    break;
+                }
+            }
         }
     });
 
-    ActorHandle { task, sender }
+    Ok(ActorHandle {
+        task,
+        reference: ActorReference(sender),
+    })
 }
