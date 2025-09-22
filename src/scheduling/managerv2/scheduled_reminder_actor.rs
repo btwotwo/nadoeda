@@ -3,7 +3,7 @@ use chrono::{NaiveDateTime, NaiveTime, TimeDelta};
 use tokio::sync::{mpsc, oneshot};
 
 use crate::{
-    actor::{Actor, ActorContext},
+    actor::{Actor, ActorContext, ActorStatus},
     reminder::Reminder,
 };
 
@@ -31,7 +31,7 @@ impl Actor for ScheduledReminderActor {
         msg: Self::Message,
         state: Self::State,
         context: &ActorContext<Self>,
-    ) -> anyhow::Result<Self::State> {
+    ) -> anyhow::Result<ActorStatus<Self::State>> {
         match msg {
             ScheduledReminderMessage::ScheduleStart {
                 reply_channel,
@@ -39,11 +39,11 @@ impl Actor for ScheduledReminderActor {
                 reminder,
             } => {
                 let target_delay =
-                    get_target_delay(&reminder.fire_at.time(), chrono::Utc::now().naive_utc());
+                    get_target_delay(&reminder.fire_at.time(), chrono::Utc::now().naive_utc()).to_std().unwrap();
                 tokio::spawn(async move { tokio::time::sleep(target_delay).await });
             }
         }
-        Ok(())
+        Ok(ActorStatus::Continue(()))
     }
 
     async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State> {

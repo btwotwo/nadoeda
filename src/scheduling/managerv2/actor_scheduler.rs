@@ -7,7 +7,7 @@ use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 
 use crate::{
-    actor::{Actor, ActorContext, ActorHandle},
+    actor::{Actor, ActorContext, ActorHandle, ActorStatus},
     reminder::{self, Reminder, ReminderId},
     scheduling::common::ReminderManagerMessage,
 };
@@ -38,13 +38,13 @@ impl Actor for ActorReminderScheduler {
         msg: Self::Message,
         state: Self::State,
         context: &ActorContext<Self>,
-    ) -> anyhow::Result<Self::State> {
+    ) -> anyhow::Result<ActorStatus<Self::State>> {
         match msg {
             ReminderManagerMessageV2::ScheduleReminder { reminder, worker } => todo!(),
             ReminderManagerMessageV2::CancelReminder { reminder } => todo!(),
         }
 
-        Ok(state)
+        Ok(ActorStatus::Continue(state))
     }
 
     async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State> {
@@ -73,7 +73,7 @@ impl ReminderSchedulerV2 for ActorReminderScheduler {
         let message = ReminderManagerMessageV2::CancelReminder {
             reminder: scheduled_reminder,
         };
-        self.actor_handle.send_message(message);
+        self.actor_handle.actor_reference().send_message(message);
 
         Ok(())
     }
@@ -92,7 +92,7 @@ mod tests {
 
     use crate::{
         reminder::{Reminder, ReminderFireTime, ReminderState},
-        scheduling::managerv2::ScheduleRequest,
+        scheduling::managerv2::{scheduled_reminder_actor::get_target_delay, ScheduleRequest},
     };
 
     use super::*;
