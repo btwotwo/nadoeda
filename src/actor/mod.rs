@@ -23,11 +23,16 @@ pub trait Actor: Sized {
 }
 
 pub struct ActorContext<TActor: Actor> {
-    sender: mpsc::UnboundedSender<TActor::Message>,
+    pub self_ref: ActorReference<TActor>
 }
 
-#[derive(Clone)]
 pub struct ActorReference<TActor: Actor>(mpsc::UnboundedSender<TActor::Message>);
+
+impl<TActor: Actor> Clone for ActorReference<TActor> {
+    fn clone(&self) -> Self {
+        Self(self.0.clone())
+    }
+}
 
 impl<TActor: Actor> ActorReference<TActor> {
     pub fn send_message(&self, msg: TActor::Message) {
@@ -56,7 +61,7 @@ pub async fn start<TActor: Actor>(args: TActor::InitArgs) -> anyhow::Result<Acto
     let task = tokio::spawn(async move {
         let mut state = initial_state;
         let context = ActorContext {
-            sender: sender_clone,
+            self_ref: ActorReference(sender_clone),
         };
         while let Some(msg) = receiver.recv().await {
             let status = TActor::handle_message(msg, state, &context);

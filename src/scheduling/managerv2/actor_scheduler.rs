@@ -73,6 +73,7 @@ impl ReminderSchedulerV2 for ActorReminderScheduler {
         let message = ReminderManagerMessageV2::CancelReminder {
             reminder: scheduled_reminder,
         };
+        
         self.actor_handle.actor_reference().send_message(message);
 
         Ok(())

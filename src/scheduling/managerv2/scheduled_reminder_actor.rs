@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use chrono::{NaiveDateTime, NaiveTime, TimeDelta};
-use tokio::sync::{mpsc, oneshot};
+use tokio::{sync::{mpsc, oneshot}, task::JoinHandle};
 
 use crate::{
     actor::{Actor, ActorContext, ActorStatus},
@@ -19,12 +19,13 @@ enum ScheduledReminderMessage {
         worker: Box<dyn ReminderWorkerV2>,
         reminder: Reminder,
     },
+    ScheduleFinish
 }
 
 #[async_trait]
 impl Actor for ScheduledReminderActor {
     type Message = ScheduledReminderMessage;
-    type State = ();
+    type State = Option<JoinHandle<()>>;
     type InitArgs = ();
 
     fn handle_message(
@@ -32,6 +33,7 @@ impl Actor for ScheduledReminderActor {
         state: Self::State,
         context: &ActorContext<Self>,
     ) -> anyhow::Result<ActorStatus<Self::State>> {
+        let self_ref = context.self_ref.clone();
         match msg {
             ScheduledReminderMessage::ScheduleStart {
                 reply_channel,
@@ -39,15 +41,26 @@ impl Actor for ScheduledReminderActor {
                 reminder,
             } => {
                 let target_delay =
-                    get_target_delay(&reminder.fire_at.time(), chrono::Utc::now().naive_utc()).to_std().unwrap();
-                tokio::spawn(async move { tokio::time::sleep(target_delay).await });
+                    get_target_delay(&reminder.fire_at.time(), chrono::Utc::now().naive_utc())
+                        .to_std()
+                    .unwrap();
+                let task_handle = tokio::spawn(async move {
+                    tokio::time::sleep(target_delay).await;
+                    worker.handle_reminder(&reminder).await.unwrap();
+                    reply_channel.send(Ok(())).unwrap();
+                    self_ref.send_message(ScheduledReminderMessage::ScheduleFinish)
+                });
+
+                Ok(ActorStatus::Continue(Some(task_handle)))
+            }
+            ScheduledReminderMessage::ScheduleFinish => {
+                Ok(ActorStatus::Stop)
             }
         }
-        Ok(ActorStatus::Continue(()))
     }
 
     async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State> {
-        Ok(())
+        Ok(None)
     }
 }
 
