@@ -1,6 +1,7 @@
 mod actor_scheduler;
 mod actor_scheduler_state;
 mod scheduled_reminder_actor;
+mod simple_reminder_scheduler;
 
 use async_trait::async_trait;
 
@@ -17,6 +18,11 @@ pub struct ScheduledReminder {
 #[async_trait]
 pub trait ReminderWorkerV2: Send + 'static {
     async fn handle_reminder(&self, reminder: &Reminder) -> anyhow::Result<()>;
+}
+
+#[async_trait]
+pub trait ReminderDeliveryChannel : Send + Sync + 'static {
+    async fn send_reminder_notification(&self, reminder: &Reminder);
 }
 
 pub trait ReminderSchedulerHandle {

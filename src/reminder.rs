@@ -4,7 +4,8 @@ use chrono::Timelike;
 pub enum ReminderState {
     Pending,
     Scheduled,
-    Nagging,
+    Nagging { attempts_left: u8 },
+    Confirming { attempts_left: u8 },
     Completed,
 }
 

@@ -1,4 +1,3 @@
-use std::default;
 use std::{collections::HashMap, sync::Arc};
 
 use super::actor_scheduler_state::ActorReminderSchedulerState;
@@ -36,6 +35,7 @@ pub enum ReminderManagerMessageV2 {
 pub struct ActorReminderScheduler {
     actor_handle: ActorHandle<Self>,
 }
+
 
 #[async_trait]
 impl Actor for ActorReminderScheduler {
