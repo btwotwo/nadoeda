@@ -22,6 +22,7 @@ pub trait Actor: Sized {
     async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State>;
 }
 
+#[derive(Clone)]
 pub struct ActorContext<TActor: Actor> {
     pub self_ref: ActorReference<TActor>
 }

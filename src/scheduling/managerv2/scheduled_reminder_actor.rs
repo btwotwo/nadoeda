@@ -1,25 +1,29 @@
 use async_trait::async_trait;
 use chrono::{NaiveDateTime, NaiveTime, TimeDelta};
-use tokio::{sync::{mpsc, oneshot}, task::JoinHandle};
+use tokio::{
+    sync::{mpsc, oneshot},
+    task::JoinHandle,
+};
 
 use crate::{
-    actor::{Actor, ActorContext, ActorStatus},
-    reminder::Reminder,
+    actor::{Actor, ActorContext, ActorReference, ActorStatus},
+    reminder::{self, Reminder},
+    scheduling::ReminderWorker,
 };
 
 use super::ReminderWorkerV2;
 
-struct ScheduledReminderActor;
+pub struct ScheduledReminderActor;
 
-type ReplyMessage = anyhow::Result<()>;
+pub type ScheduledReminderActorReplyMessage = anyhow::Result<()>;
 
-enum ScheduledReminderMessage {
+pub enum ScheduledReminderMessage {
     ScheduleStart {
-        reply_channel: oneshot::Sender<ReplyMessage>,
+        reply_channel: oneshot::Sender<ScheduledReminderActorReplyMessage>,
         worker: Box<dyn ReminderWorkerV2>,
         reminder: Reminder,
     },
-    ScheduleFinish
+    ScheduleFinish,
 }
 
 #[async_trait]
@@ -43,7 +47,8 @@ impl Actor for ScheduledReminderActor {
                 let target_delay =
                     get_target_delay(&reminder.fire_at.time(), chrono::Utc::now().naive_utc())
                         .to_std()
-                    .unwrap();
+                        .unwrap();
+
                 let task_handle = tokio::spawn(async move {
                     tokio::time::sleep(target_delay).await;
                     worker.handle_reminder(&reminder).await.unwrap();
@@ -53,9 +58,8 @@ impl Actor for ScheduledReminderActor {
 
                 Ok(ActorStatus::Continue(Some(task_handle)))
             }
-            ScheduledReminderMessage::ScheduleFinish => {
-                Ok(ActorStatus::Stop)
-            }
+
+            ScheduledReminderMessage::ScheduleFinish => Ok(ActorStatus::Stop),
         }
     }
 
@@ -63,6 +67,7 @@ impl Actor for ScheduledReminderActor {
         Ok(None)
     }
 }
+
 
 pub(crate) fn get_target_delay(fire_at: &NaiveTime, now: NaiveDateTime) -> chrono::Duration {
     let max_delta = TimeDelta::new(10, 0).expect("This is always in bounds.");

@@ -1,11 +1,16 @@
+use std::default;
 use std::{collections::HashMap, sync::Arc};
 
 use super::actor_scheduler_state::ActorReminderSchedulerState;
+use super::scheduled_reminder_actor::{ScheduledReminderActor, ScheduledReminderActorReplyMessage};
 use async_trait::async_trait;
 use chrono::{NaiveDateTime, NaiveTime, TimeDelta};
-use tokio::sync::mpsc;
-use tokio::task::JoinHandle;
+use teloxide::types::ReplyMarkup;
+use tokio::sync::{mpsc, oneshot};
+use tokio::task::{self, JoinHandle};
 
+use crate::actor::{self, ActorReference};
+use crate::scheduling::managerv2::scheduled_reminder_actor::ScheduledReminderMessage;
 use crate::{
     actor::{Actor, ActorContext, ActorHandle, ActorStatus},
     reminder::{self, Reminder, ReminderId},
@@ -18,6 +23,10 @@ pub enum ReminderManagerMessageV2 {
     ScheduleReminder {
         reminder: Reminder,
         worker: Box<dyn ReminderWorkerV2>,
+    },
+    ReminderScheduled {
+        reminder_id: ReminderId,
+        reminder_task: ActorHandle<ScheduledReminderActor>,
     },
     CancelReminder {
         reminder: ScheduledReminder,
@@ -39,16 +48,47 @@ impl Actor for ActorReminderScheduler {
         state: Self::State,
         context: &ActorContext<Self>,
     ) -> anyhow::Result<ActorStatus<Self::State>> {
-        match msg {
-            ReminderManagerMessageV2::ScheduleReminder { reminder, worker } => todo!(),
-            ReminderManagerMessageV2::CancelReminder { reminder } => todo!(),
-        }
+        let new_state = match msg {
+            ReminderManagerMessageV2::ScheduleReminder { reminder, worker } => {
+                task::spawn(async move {
+                    let reminder_id = reminder.id;
+                    let scheduled_reminder =
+                        actor::start::<ScheduledReminderActor>(()).await.unwrap();
+                    let (reply_sender, reply_receiver) = oneshot::channel();
+                    let message = ScheduledReminderMessage::ScheduleStart {
+                        reply_channel: reply_sender,
+                        worker,
+                        reminder,
+                    };
 
-        Ok(ActorStatus::Continue(state))
+                    scheduled_reminder.actor_reference().send_message(message);
+                    context
+                        .self_ref
+                        .send_message(ReminderManagerMessageV2::ReminderScheduled {
+                            reminder_task: scheduled_reminder,
+                            reminder_id,
+                        });
+                    
+                });
+                
+                state
+            }
+            ReminderManagerMessageV2::ReminderScheduled {
+                reminder_id,
+                reminder_task,
+            } => {
+                state.scheduled_reminders.insert(reminder_id, reminder_id)
+            }
+            ReminderManagerMessageV2::CancelReminder { reminder } => todo!(),
+        };
+
+        Ok(ActorStatus::Continue(new_state))
     }
 
     async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State> {
-        Ok(ActorReminderSchedulerState {})
+        Ok(ActorReminderSchedulerState {
+            scheduled_reminders: HashMap::new()
+        })
     }
 }
 
@@ -73,13 +113,12 @@ impl ReminderSchedulerV2 for ActorReminderScheduler {
         let message = ReminderManagerMessageV2::CancelReminder {
             reminder: scheduled_reminder,
         };
-        
+
         self.actor_handle.actor_reference().send_message(message);
 
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -93,7 +132,7 @@ mod tests {
 
     use crate::{
         reminder::{Reminder, ReminderFireTime, ReminderState},
-        scheduling::managerv2::{scheduled_reminder_actor::get_target_delay, ScheduleRequest},
+        scheduling::managerv2::{ScheduleRequest, scheduled_reminder_actor::get_target_delay},
     };
 
     use super::*;
