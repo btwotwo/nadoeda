@@ -45,8 +45,8 @@ impl Actor for ActorReminderScheduler {
 
     fn handle_message(
         msg: Self::Message,
-        state: Self::State,
-        context: &ActorContext<Self>,
+        mut state: Self::State,
+        context: ActorContext<Self>,
     ) -> anyhow::Result<ActorStatus<Self::State>> {
         let new_state = match msg {
             ReminderManagerMessageV2::ScheduleReminder { reminder, worker } => {
@@ -68,16 +68,16 @@ impl Actor for ActorReminderScheduler {
                             reminder_task: scheduled_reminder,
                             reminder_id,
                         });
-                    
                 });
-                
+
                 state
             }
             ReminderManagerMessageV2::ReminderScheduled {
                 reminder_id,
                 reminder_task,
             } => {
-                state.scheduled_reminders.insert(reminder_id, reminder_id)
+                state.scheduled_reminders.insert(reminder_id, reminder_task);
+                state
             }
             ReminderManagerMessageV2::CancelReminder { reminder } => todo!(),
         };
@@ -87,7 +87,7 @@ impl Actor for ActorReminderScheduler {
 
     async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State> {
         Ok(ActorReminderSchedulerState {
-            scheduled_reminders: HashMap::new()
+            scheduled_reminders: HashMap::new(),
         })
     }
 }

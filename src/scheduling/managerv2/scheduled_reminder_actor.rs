@@ -35,7 +35,7 @@ impl Actor for ScheduledReminderActor {
     fn handle_message(
         msg: Self::Message,
         state: Self::State,
-        context: &ActorContext<Self>,
+        context: ActorContext<Self>,
     ) -> anyhow::Result<ActorStatus<Self::State>> {
         let self_ref = context.self_ref.clone();
         match msg {

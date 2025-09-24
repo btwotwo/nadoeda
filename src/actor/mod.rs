@@ -4,7 +4,7 @@ use tokio::{sync::mpsc, task::JoinHandle};
 
 pub enum ActorStatus<S> {
     Continue(S),
-    Stop
+    Stop,
 }
 
 #[async_trait]
@@ -16,15 +16,22 @@ pub trait Actor: Sized {
     fn handle_message(
         msg: Self::Message,
         state: Self::State,
-        context: &ActorContext<Self>,
+        context: ActorContext<Self>,
     ) -> anyhow::Result<ActorStatus<Self::State>>;
 
     async fn init_state(args: Self::InitArgs) -> anyhow::Result<Self::State>;
 }
 
-#[derive(Clone)]
 pub struct ActorContext<TActor: Actor> {
-    pub self_ref: ActorReference<TActor>
+    pub self_ref: ActorReference<TActor>,
+}
+
+impl<TActor: Actor> Clone for ActorContext<TActor> {
+    fn clone(&self) -> Self {
+        Self {
+            self_ref: self.self_ref.clone(),
+        }
+    }
 }
 
 pub struct ActorReference<TActor: Actor>(mpsc::UnboundedSender<TActor::Message>);
@@ -65,16 +72,17 @@ pub async fn start<TActor: Actor>(args: TActor::InitArgs) -> anyhow::Result<Acto
             self_ref: ActorReference(sender_clone),
         };
         while let Some(msg) = receiver.recv().await {
-            let status = TActor::handle_message(msg, state, &context);
+            let status = TActor::handle_message(msg, state, context.clone());
             match status {
                 Ok(status) => match status {
-                    ActorStatus::Continue(new_state) => {
-                        state = new_state
-                    },
-                    ActorStatus::Stop => break
-                }
+                    ActorStatus::Continue(new_state) => state = new_state,
+                    ActorStatus::Stop => break,
+                },
                 Err(e) => {
-                    log::error!("Actor returned an error while processing the message. {}", e);
+                    log::error!(
+                        "Actor returned an error while processing the message. {}",
+                        e
+                    );
                     break;
                 }
             }
