@@ -1,12 +1,11 @@
 use chrono::Timelike;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub enum ReminderState {
     Pending,
     Scheduled,
     Nagging { attempts_left: u8 },
     Confirming { attempts_left: u8 },
-    Completed,
 }
 
 pub enum ReminderFiringPeriod {
