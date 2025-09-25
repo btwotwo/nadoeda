@@ -24,7 +24,8 @@ pub enum ReminderMessageType {
     Nag,
     Confirmation,
     Timeout,
-    Finished
+    Finished,
+    Cancelled
 }
 
 #[async_trait]

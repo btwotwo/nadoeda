@@ -2,7 +2,6 @@ use std::{collections::HashMap, time::Duration};
 
 use chrono::{DateTime, NaiveDateTime, NaiveTime, TimeDelta, Utc};
 use tokio::{
-    io::DuplexStream,
     sync::mpsc,
     task::{self, JoinHandle},
 };
@@ -64,7 +63,9 @@ impl ReminderSchedulerV2 for SimpleReminderScheduler {
         scheduled_reminder: super::ScheduledReminder,
     ) -> anyhow::Result<()> {
         if let Some((_, scheduled_reminder)) = self.tasks.remove_entry(&scheduled_reminder.id) {
-            scheduled_reminder.task.abort();
+            task::spawn(async move {
+                scheduled_reminder.tx.send(ReminderEvent::Cancel).await.unwrap();
+            });
             Ok(())
         } else {
             anyhow::bail!("No such reminder")
@@ -78,11 +79,13 @@ async fn run_reminder(
     mut rx: mpsc::Receiver<ReminderEvent>,
     tx: mpsc::Sender<ReminderEvent>,
 ) {
+    // Todo: dispose of this task
     while let Some(event) = rx.recv().await {
         let new_state =
             handle_event(&reminder, &reminder.state, &event, &delivery, tx.clone()).await;
         reminder.state = new_state;
     }
+    println!("Finished listening, wow!");
 }
 
 async fn handle_event(
@@ -179,7 +182,12 @@ async fn handle_event(
                 .await;
             ReminderState::Pending
         }
-        (_, ReminderEvent::Cancel) => ReminderState::Pending,
+        (_, ReminderEvent::Cancel) => {
+            delivery
+                .send_reminder_notification(&reminder, ReminderMessageType::Cancelled)
+                .await;
+            ReminderState::Pending
+        }
         (state, event) => {
             log::warn!(
                 "Received unknown state and event combination for reminder. [state = {:?}, event = {:?}, reminder_id = {}]",
@@ -315,7 +323,7 @@ mod tests {
     #[tokio::test(start_paused = true)]
     pub async fn scheduling_test() {
         let received_messages = received_messages();
-        let delivery_channel = delivery_channel(Arc::clone(&received_messages));
+        let delivery_channel = delivery_channel(&received_messages);
         let mut scheduler = SimpleReminderScheduler::new();
         let req = ScheduleRequest {
             reminder: reminder(NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap()),
@@ -328,6 +336,27 @@ mod tests {
         let msgs = received_messages.lock().unwrap();
         assert_eq!(msgs.len(), 1);
         assert_eq!(*msgs.first().unwrap(), ReminderMessageType::Fired);
+    }
+
+    #[tokio::test(start_paused = true)]
+    pub async fn cancelling_test() {
+        let received_messages = received_messages();
+        let delivery_channel = delivery_channel(&received_messages);
+        let mut scheduler = SimpleReminderScheduler::new();
+        let req = ScheduleRequest {
+            reminder: reminder(NaiveTime::from_hms_milli_opt(12, 00, 00, 00).unwrap()),
+        };
+        let expected_delay = expected_delay(&req.reminder);
+
+        let scheduled_reminder = scheduler.schedule_reminder(req, delivery_channel).unwrap();
+        scheduler.cancel_reminder(scheduled_reminder).unwrap();
+
+        wait_for_trigger(expected_delay).await;
+        let msgs = received_messages.lock().unwrap();
+        assert_eq!(msgs.len(), 1);
+        assert_eq!(*msgs.first().unwrap(), ReminderMessageType::Cancelled);
+
+        wait_for_trigger(expected_delay).await;
     }
 
     async fn wait_for_trigger(expected_delay: chrono::Duration) {
@@ -352,9 +381,9 @@ mod tests {
         Arc::new(Mutex::new(vec![]))
     }
 
-    fn delivery_channel(msgs: ReceivedMessages) -> Box<TestDeliveryChannel> {
+    fn delivery_channel(msgs: &ReceivedMessages) -> Box<TestDeliveryChannel> {
         Box::new(TestDeliveryChannel {
-            received_messages: msgs,
+            received_messages: Arc::clone(msgs),
         })
     }
 }
