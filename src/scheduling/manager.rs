@@ -114,7 +114,10 @@ mod tests {
     use chrono::{DateTime, Duration, NaiveDateTime, NaiveTime, Utc};
     use tokio::sync::Mutex;
 
-    use crate::{reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState}, scheduling::ReminderWorker};
+    use crate::{
+        reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState},
+        scheduling::ReminderWorker,
+    };
 
     use super::*;
 
@@ -158,7 +161,8 @@ mod tests {
         let reminder_id = reminder.id;
 
         manager.schedule_reminder(reminder).await.unwrap();
-        tokio::time::sleep(expected_delay.to_std().unwrap() + std::time::Duration::from_secs(15)).await;
+        tokio::time::sleep(expected_delay.to_std().unwrap() + std::time::Duration::from_secs(15))
+            .await;
         let tasks = received_tasks.lock().await;
 
         assert_eq!(tasks.len(), 1);
@@ -174,7 +178,8 @@ mod tests {
 
         manager.schedule_reminder(reminder.clone()).await.unwrap();
         manager.cancel_reminder(reminder).await.unwrap();
-        tokio::time::sleep(expected_delay.to_std().unwrap() - std::time::Duration::from_secs(15)).await;
+        tokio::time::sleep(expected_delay.to_std().unwrap() - std::time::Duration::from_secs(15))
+            .await;
 
         wait_for_trigger(expected_delay).await;
 
@@ -191,7 +196,7 @@ mod tests {
 
         let reminder = reminder(original_time);
         let original_expected_delay = expected_delay(&reminder);
-        
+
         manager.schedule_reminder(reminder.clone()).await.unwrap();
         let rescheduled_reminder = Reminder {
             fire_at: ReminderFireTime::new(reschedule_time),
@@ -199,7 +204,7 @@ mod tests {
         };
 
         let rescheduled_expected_delay = expected_delay(&rescheduled_reminder);
-        
+
         manager
             .schedule_reminder(rescheduled_reminder)
             .await
@@ -213,7 +218,8 @@ mod tests {
     }
 
     async fn wait_for_trigger(expected_delay: chrono::Duration) {
-        tokio::time::sleep(expected_delay.to_std().unwrap() + std::time::Duration::from_secs(15)).await
+        tokio::time::sleep(expected_delay.to_std().unwrap() + std::time::Duration::from_secs(15))
+            .await
     }
 
     fn expected_delay(reminder: &Reminder) -> chrono::Duration {

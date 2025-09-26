@@ -12,7 +12,9 @@ use crate::reminder::ReminderFireTime;
 use crate::scheduling::ReminderManagerTrait;
 use crate::storage::{NewReminder, ReminderStorage};
 
-use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult, HandlerReminderStorageType};
+use super::{
+    GlobalCommand, GlobalDialogue, GlobalState, HandlerReminderStorageType, HandlerResult,
+};
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub(super) enum CreatingDailyReminderState {
@@ -141,12 +143,12 @@ async fn confirm_reminder(
         .get(reminder_id)
         .await
         .expect("Reminder was just created.");
-    
+
     manager.schedule_reminder(reminder).await?;
 
     bot.send_message(dialogue.chat_id(), "Reminder saved and scheduled.")
         .await?;
-    
+
     dialogue.exit().await?;
     Ok(())
 }
@@ -184,26 +186,45 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 
 #[cfg(test)]
 mod tests {
-    use teloxide::{dispatching::dialogue::{self, InMemStorage}, dptree::deps};
+    use teloxide::{
+        dispatching::dialogue::{self, InMemStorage},
+        dptree::deps,
+    };
     use teloxide_tests::{MockBot, MockMessageText};
 
-    use crate::{scheduling::ReminderManager, storage::InMemoryReminderStorage, PrinterWorkerFactory};
+    use crate::{
+        PrinterWorkerFactory, scheduling::ReminderManager, storage::InMemoryReminderStorage,
+    };
 
     use super::*;
-    
+
     #[tokio::test]
     async fn test() {
         let reminder_storage: Arc<dyn ReminderStorage> = Arc::new(InMemoryReminderStorage::new());
-        let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>().branch(schema());
+        let schema =
+            dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>().branch(schema());
         let mut bot = MockBot::new(MockMessageText::new().text("New Reminder"), schema);
         let worker_factory = PrinterWorkerFactory;
-        
+
         let manager = ReminderManager::create(worker_factory);
         let manager: Arc<dyn ReminderManagerTrait> = Arc::new(manager);
 
-        bot.dependencies(deps![reminder_storage, InMemStorage::<GlobalState>::new(), manager, GlobalState::Idle]);
-        bot.set_state(GlobalState::CreatingDailyReminder(CreatingDailyReminderState::WaitingForReminderText)).await;
+        bot.dependencies(deps![
+            reminder_storage,
+            InMemStorage::<GlobalState>::new(),
+            manager,
+            GlobalState::Idle
+        ]);
+        bot.set_state(GlobalState::CreatingDailyReminder(
+            CreatingDailyReminderState::WaitingForReminderText,
+        ))
+        .await;
 
-        bot.dispatch_and_check_state(GlobalState::CreatingDailyReminder(CreatingDailyReminderState::WaitingForFiringTime { text: "New Reminder".to_string() })).await;
+        bot.dispatch_and_check_state(GlobalState::CreatingDailyReminder(
+            CreatingDailyReminderState::WaitingForFiringTime {
+                text: "New Reminder".to_string(),
+            },
+        ))
+        .await;
     }
 }

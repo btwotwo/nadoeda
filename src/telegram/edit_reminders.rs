@@ -6,7 +6,9 @@ use teloxide::utils::markdown;
 
 use crate::reminder::Reminder;
 
-use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult, HandlerReminderStorageType};
+use super::{
+    GlobalCommand, GlobalDialogue, GlobalState, HandlerReminderStorageType, HandlerResult,
+};
 
 #[derive(Clone, Default)]
 pub(super) enum EditRemindersState {

@@ -8,7 +8,7 @@ use crate::reminder::{Reminder, ReminderId, ReminderState};
 use super::{NewReminder, model::UpdateReminder};
 
 #[async_trait]
-pub trait ReminderStorage: Send+Sync {
+pub trait ReminderStorage: Send + Sync {
     async fn insert(&self, reminder: NewReminder) -> anyhow::Result<ReminderId>;
     async fn update(&self, reminder: UpdateReminder) -> anyhow::Result<ReminderId>;
     async fn get(&self, id: ReminderId) -> Option<Reminder>;
@@ -17,7 +17,7 @@ pub trait ReminderStorage: Send+Sync {
 
 struct InMemoryReminderStore {
     current_id: ReminderId,
-    storage: HashMap<ReminderId, Reminder>
+    storage: HashMap<ReminderId, Reminder>,
 }
 
 pub struct InMemoryReminderStorage {
@@ -29,7 +29,7 @@ impl InMemoryReminderStorage {
         InMemoryReminderStorage {
             store: RwLock::new(InMemoryReminderStore {
                 current_id: 0,
-                storage: HashMap::new()
+                storage: HashMap::new(),
             }),
         }
     }

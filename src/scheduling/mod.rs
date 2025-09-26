@@ -1,8 +1,8 @@
 mod common;
 mod manager;
+mod managerv2;
 mod scheduler;
 mod worker;
-mod managerv2;
 
 pub use common::SchedulerContext;
 pub use manager::{ReminderManager, ReminderManagerTrait};

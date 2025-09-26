@@ -1,9 +1,9 @@
+mod actor;
 mod appsettings;
 mod reminder;
 mod scheduling;
 mod storage;
 mod telegram;
-mod actor;
 
 use async_trait::async_trait;
 use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
@@ -38,7 +38,6 @@ async fn main() {
     let interface_task = tokio::spawn(async move {
         TelegramInteractionInterface::start(storage.clone()).await;
     });
-
 
     interface_task.await;
 }
