@@ -64,7 +64,11 @@ impl ReminderSchedulerV2 for SimpleReminderScheduler {
     ) -> anyhow::Result<()> {
         if let Some((_, scheduled_reminder)) = self.tasks.remove_entry(&scheduled_reminder.id) {
             task::spawn(async move {
-                scheduled_reminder.tx.send(ReminderEvent::Cancel).await.unwrap();
+                scheduled_reminder
+                    .tx
+                    .send(ReminderEvent::Stop)
+                    .await
+                    .unwrap();
             });
             Ok(())
         } else {
@@ -84,8 +88,10 @@ async fn run_reminder(
         let new_state =
             handle_event(&reminder, &reminder.state, &event, &delivery, tx.clone()).await;
         reminder.state = new_state;
+        if matches!(event, ReminderEvent::Stop) {
+            break;
+        }
     }
-    println!("Finished listening, wow!");
 }
 
 async fn handle_event(
@@ -182,9 +188,9 @@ async fn handle_event(
                 .await;
             ReminderState::Pending
         }
-        (_, ReminderEvent::Cancel) => {
+        (_, ReminderEvent::Stop) => {
             delivery
-                .send_reminder_notification(&reminder, ReminderMessageType::Cancelled)
+                .send_reminder_notification(&reminder, ReminderMessageType::Stopped)
                 .await;
             ReminderState::Pending
         }
@@ -207,7 +213,7 @@ enum ReminderEvent {
     Trigger,
     Timeout,
     Confirm,
-    Cancel,
+    Stop,
 }
 
 pub(crate) fn get_target_delay(fire_at: &NaiveTime, now: DateTime<Utc>) -> chrono::Duration {
@@ -339,7 +345,7 @@ mod tests {
     }
 
     #[tokio::test(start_paused = true)]
-    pub async fn cancelling_test() {
+    pub async fn stopping_test() {
         let received_messages = received_messages();
         let delivery_channel = delivery_channel(&received_messages);
         let mut scheduler = SimpleReminderScheduler::new();
@@ -354,7 +360,7 @@ mod tests {
         wait_for_trigger(expected_delay).await;
         let msgs = received_messages.lock().unwrap();
         assert_eq!(msgs.len(), 1);
-        assert_eq!(*msgs.first().unwrap(), ReminderMessageType::Cancelled);
+        assert_eq!(*msgs.first().unwrap(), ReminderMessageType::Stopped);
 
         wait_for_trigger(expected_delay).await;
     }
