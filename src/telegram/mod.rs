@@ -4,7 +4,6 @@ mod delivery_channel;
 
 use std::sync::Arc;
 pub use delivery_channel::TelegramDeliveryChannel;
-use crate::storage::InMemoryReminderStorage;
 use crate::PrinterWorkerFactory;
 use crate::appsettings;
 use crate::scheduling::ReminderManager;

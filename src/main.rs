@@ -10,7 +10,6 @@ use scheduling::{ReminderWorker, SchedulerContext, WorkerFactory};
 use std::sync::Arc;
 use storage::{InMemoryReminderStorage, ReminderStorage};
 use telegram::{TelegramDeliveryChannel, TelegramInteractionInterface};
-use teloxide::{prelude::Requester, types::ChatId};
 
 struct PrinterWorker;
 struct PrinterWorkerFactory;

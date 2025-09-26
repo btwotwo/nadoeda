@@ -1,17 +1,14 @@
 use std::{collections::HashMap, time::Duration};
 
-use chrono::{DateTime, NaiveDateTime, NaiveTime, TimeDelta, Utc};
+use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
 use tokio::{
     sync::mpsc,
     task::{self, JoinHandle},
 };
 
-use crate::{
-    reminder::{self, Reminder, ReminderId, ReminderState},
-    scheduling::scheduler::ReminderScheduler,
-};
+use crate::reminder::{Reminder, ReminderId, ReminderState};
 
-use super::{ReminderDeliveryChannel, ReminderMessageType, ReminderSchedulerV2, ScheduledReminder};
+use super::{ReminderDeliveryChannel, ReminderMessageType, ReminderSchedulerV2};
 
 const NAGGING_ATTEMPTS: u8 = 10;
 const NAGGING_TIMEOUT: Duration = Duration::from_secs(30);
@@ -43,9 +40,7 @@ impl ReminderSchedulerV2 for SimpleReminderScheduler {
         delivery_channel: Box<dyn ReminderDeliveryChannel>,
     ) -> anyhow::Result<super::ScheduledReminder> {
         let reminder_id = schedule_request.reminder.id;
-        if self.tasks.contains_key(&reminder_id) {
-            anyhow::bail!("Already scheduled")
-        } else {
+        if let std::collections::hash_map::Entry::Vacant(e) = self.tasks.entry(reminder_id) {
             let (tx, rx) = mpsc::channel(10);
             let tx_clone = tx.clone();
             let task = task::spawn(async move {
@@ -53,8 +48,10 @@ impl ReminderSchedulerV2 for SimpleReminderScheduler {
                 run_reminder(schedule_request.reminder, &delivery_channel, rx, tx_clone).await;
             });
             let scheduled_reminder = ScheduledReminderHandle { task, tx };
-            self.tasks.insert(reminder_id, scheduled_reminder);
+            e.insert(scheduled_reminder);
             Ok(super::ScheduledReminder { id: reminder_id })
+        } else {
+            anyhow::bail!("Already scheduled")
         }
     }
 
@@ -86,7 +83,7 @@ async fn run_reminder(
     // Todo: dispose of this task
     while let Some(event) = rx.recv().await {
         let new_state =
-            handle_event(&reminder, &reminder.state, &event, &delivery, tx.clone()).await;
+            handle_event(&reminder, &reminder.state, &event, delivery, tx.clone()).await;
         reminder.state = new_state;
         if matches!(event, ReminderEvent::Stop) {
             break;
@@ -116,7 +113,7 @@ async fn handle_event(
         }
         (ReminderState::Scheduled, ReminderEvent::Trigger) => {
             delivery
-                .send_reminder_notification(&reminder, ReminderMessageType::Fired)
+                .send_reminder_notification(reminder, ReminderMessageType::Fired)
                 .await;
             task::spawn(async move {
                 tokio::time::sleep(NAGGING_TIMEOUT).await;
@@ -130,13 +127,13 @@ async fn handle_event(
         (ReminderState::Nagging { attempts_left }, ReminderEvent::Trigger) => {
             if *attempts_left <= 0 {
                 delivery
-                    .send_reminder_notification(&reminder, ReminderMessageType::Timeout)
+                    .send_reminder_notification(reminder, ReminderMessageType::Timeout)
                     .await;
                 return ReminderState::Pending;
             }
 
             delivery
-                .send_reminder_notification(&reminder, ReminderMessageType::Nag)
+                .send_reminder_notification(reminder, ReminderMessageType::Nag)
                 .await;
 
             task::spawn(async move {
@@ -150,7 +147,7 @@ async fn handle_event(
         }
         (ReminderState::Nagging { .. }, ReminderEvent::Confirm) => {
             delivery
-                .send_reminder_notification(&reminder, ReminderMessageType::Confirmation)
+                .send_reminder_notification(reminder, ReminderMessageType::Confirmation)
                 .await;
             task::spawn(async move {
                 tokio::time::sleep(CONFIRMATION_TIMEOUT).await;
@@ -164,13 +161,13 @@ async fn handle_event(
         (ReminderState::Confirming { attempts_left }, ReminderEvent::Trigger) => {
             if *attempts_left <= 0 {
                 delivery
-                    .send_reminder_notification(&reminder, ReminderMessageType::Timeout)
+                    .send_reminder_notification(reminder, ReminderMessageType::Timeout)
                     .await;
                 return ReminderState::Pending;
             }
 
             delivery
-                .send_reminder_notification(&reminder, ReminderMessageType::Confirmation)
+                .send_reminder_notification(reminder, ReminderMessageType::Confirmation)
                 .await;
 
             task::spawn(async move {
@@ -184,13 +181,13 @@ async fn handle_event(
         }
         (ReminderState::Confirming { .. }, ReminderEvent::Confirm) => {
             delivery
-                .send_reminder_notification(&reminder, ReminderMessageType::Finished)
+                .send_reminder_notification(reminder, ReminderMessageType::Finished)
                 .await;
             ReminderState::Pending
         }
         (_, ReminderEvent::Stop) => {
             delivery
-                .send_reminder_notification(&reminder, ReminderMessageType::Stopped)
+                .send_reminder_notification(reminder, ReminderMessageType::Stopped)
                 .await;
             ReminderState::Pending
         }

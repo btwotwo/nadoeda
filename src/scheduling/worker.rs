@@ -1,6 +1,5 @@
 use async_trait::async_trait;
 
-use crate::reminder::Reminder;
 
 use super::common::SchedulerContext;
 
