@@ -12,11 +12,6 @@ pub struct ScheduledReminder {
     id: ReminderId,
 }
 
-#[async_trait]
-pub trait ReminderWorkerV2: Send + 'static {
-    async fn handle_reminder(&self, reminder: &Reminder) -> anyhow::Result<()>;
-}
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum ReminderMessageType {
     Scheduled,
@@ -25,26 +20,20 @@ pub enum ReminderMessageType {
     Confirmation,
     Timeout,
     Finished,
-    Stopped
+    Stopped,
 }
 
 #[async_trait]
-pub trait ReminderDeliveryChannel : Send + Sync + 'static {
+pub trait ReminderDeliveryChannel: Send + Sync + 'static {
     async fn send_reminder_notification(&self, reminder: &Reminder, message: ReminderMessageType);
-}
-
-pub trait ReminderSchedulerHandle {
-    fn notify_success();
-    fn notify_error(e: anyhow::Error);
 }
 
 pub trait ReminderSchedulerV2: Send + Sync + 'static {
     fn schedule_reminder(
         &mut self,
         schedule_request: ScheduleRequest,
-        delivery_channel: Box<dyn ReminderDeliveryChannel>
+        delivery_channel: Box<dyn ReminderDeliveryChannel>,
     ) -> anyhow::Result<ScheduledReminder>;
 
     fn cancel_reminder(&mut self, scheduled_reminder: ScheduledReminder) -> anyhow::Result<()>;
 }
-
