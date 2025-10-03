@@ -1,0 +1,17 @@
+[package]
+name = "nadoeda_telegram"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+teloxide = { version = "0.17.0", features = ["macros"] }
+serde = { version = "1.0.219", features = ["derive"] }
+log = "0.4"
+chrono = "0.4.42"
+tokio = { version = "1", features = ["full", "test-util"] }
+nadoeda_models = { version = "0.1.0", path = "../nadoeda_models" }
+nadoeda_storage = { version = "0.1.0", path = "../nadoeda_storage" }
+
+[dev-dependencies]
+teloxide_tests = "0.4.0"

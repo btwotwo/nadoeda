@@ -1,0 +1,11 @@
+[package]
+name = "nadoeda_storage"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+async-trait = "0.1.89"
+log = "0.4"
+nadoeda_models = { version = "0.1.0", path = "../nadoeda_models" }
+tokio = {version = "1", features=["sync"] }
