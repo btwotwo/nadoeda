@@ -302,8 +302,9 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     use async_trait::async_trait;
+    use nadoeda_models::reminder::ReminderFireTime;
 
-    use crate::{reminder::ReminderFireTime, scheduling::managerv2::ScheduleRequest};
+    use crate::managerv2::ScheduleRequest;
 
     use super::*;
     type ReceivedMessages = Arc<Mutex<Vec<ReminderMessageType>>>;

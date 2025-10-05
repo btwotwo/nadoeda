@@ -1,18 +1,16 @@
-use std::sync::Arc;
 
 use chrono::NaiveTime;
 use dptree::case;
 use teloxide::dispatching::UpdateHandler;
-use teloxide::dispatching::dialogue::GetChatId;
 use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, types::Message};
 
 use nadoeda_models::reminder::ReminderFireTime;
-use nadoeda_storage::{NewReminder, ReminderStorage};
+use nadoeda_storage::NewReminder;
 
 use super::{
-    GlobalCommand, GlobalDialogue, GlobalState, HandlerReminderStorageType, HandlerResult,
+    GlobalCommand, GlobalDialogue, GlobalState, HandlerResult,
 };
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
