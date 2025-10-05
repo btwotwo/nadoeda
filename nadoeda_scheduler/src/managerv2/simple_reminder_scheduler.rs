@@ -37,7 +37,7 @@ impl ReminderSchedulerV2 for SimpleReminderScheduler {
     fn schedule_reminder(
         &mut self,
         schedule_request: super::ScheduleRequest,
-        delivery_channel: Box<dyn ReminderDeliveryChannel>,
+        delivery_channel: impl ReminderDeliveryChannel
     ) -> anyhow::Result<super::ScheduledReminder> {
         let reminder_id = schedule_request.reminder.id;
         if let std::collections::hash_map::Entry::Vacant(e) = self.tasks.entry(reminder_id) {
@@ -76,7 +76,7 @@ impl ReminderSchedulerV2 for SimpleReminderScheduler {
 
 async fn run_reminder(
     mut reminder: Reminder,
-    delivery: &Box<dyn ReminderDeliveryChannel>,
+    delivery: &impl ReminderDeliveryChannel,
     mut rx: mpsc::Receiver<ReminderEvent>,
     tx: mpsc::Sender<ReminderEvent>,
 ) {
@@ -95,7 +95,7 @@ async fn handle_event(
     reminder: &Reminder,
     current: &ReminderState,
     event: &ReminderEvent,
-    delivery: &Box<dyn ReminderDeliveryChannel>,
+    delivery: &impl ReminderDeliveryChannel,
     tx: mpsc::Sender<ReminderEvent>,
 ) -> ReminderState {
     match (current, event) {
@@ -385,9 +385,9 @@ mod tests {
         Arc::new(Mutex::new(vec![]))
     }
 
-    fn delivery_channel(msgs: &ReceivedMessages) -> Box<TestDeliveryChannel> {
-        Box::new(TestDeliveryChannel {
+    fn delivery_channel(msgs: &ReceivedMessages) -> TestDeliveryChannel {
+        TestDeliveryChannel {
             received_messages: Arc::clone(msgs),
-        })
+        }
     }
 }
