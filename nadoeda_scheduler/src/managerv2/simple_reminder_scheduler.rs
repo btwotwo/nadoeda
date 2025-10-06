@@ -136,7 +136,7 @@ async fn handle_event(
             }
         }
         (ReminderState::Nagging { attempts_left }, ReminderEvent::Trigger) => {
-            if *attempts_left <= 0 {
+            if *attempts_left == 0 {
                 delivery
                     .send_reminder_notification(reminder, ReminderMessageType::Timeout)
                     .await;
@@ -149,7 +149,7 @@ async fn handle_event(
 
             task::spawn(async move {
                 tokio::time::sleep(NAGGING_TIMEOUT).await;
-                let _ = tx.send(ReminderEvent::Trigger);
+                let _ = tx.send(ReminderEvent::Trigger).await;
             });
 
             ReminderState::Nagging {
@@ -163,7 +163,7 @@ async fn handle_event(
 
             task::spawn(async move {
                 tokio::time::sleep(CONFIRMATION_TIMEOUT).await;
-                let _ = tx.send(ReminderEvent::Trigger);
+                let _ = tx.send(ReminderEvent::Trigger).await;
             });
 
             ReminderState::Confirming {
@@ -171,7 +171,7 @@ async fn handle_event(
             }
         }
         (ReminderState::Confirming { attempts_left }, ReminderEvent::Trigger) => {
-            if *attempts_left <= 0 {
+            if *attempts_left == 0 {
                 delivery
                     .send_reminder_notification(reminder, ReminderMessageType::Timeout)
                     .await;
