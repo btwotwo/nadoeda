@@ -1,10 +1,10 @@
 use super::*;
 
-use nadoeda_models::reminder::ReminderFireTime;
 use chrono::NaiveDate;
 use chrono::NaiveDateTime;
 use chrono::NaiveTime;
 use chrono::Timelike;
+use nadoeda_models::reminder::ReminderFireTime;
 use proptest::prelude::*;
 use proptest_arbitrary_interop::arb;
 
@@ -44,7 +44,7 @@ pub fn when_firing_time_is_passed_target_delay_should_be_next_day() {
     );
 }
 
-proptest! {
+proptest::proptest! {
     #[test]
     fn test_target_delay(
         now_utc in arb::<NaiveDateTime>(),

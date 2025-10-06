@@ -1,5 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
+use async_trait::async_trait;
 use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
 use tokio::{
     sync::mpsc,
@@ -33,11 +34,12 @@ impl SimpleReminderScheduler {
     }
 }
 
+#[async_trait]
 impl ReminderSchedulerV2 for SimpleReminderScheduler {
     fn schedule_reminder(
         &mut self,
         schedule_request: super::ScheduleRequest,
-        delivery_channel: impl ReminderDeliveryChannel
+        delivery_channel: impl ReminderDeliveryChannel,
     ) -> anyhow::Result<super::ScheduledReminder> {
         let reminder_id = schedule_request.reminder.id;
         if let std::collections::hash_map::Entry::Vacant(e) = self.tasks.entry(reminder_id) {
@@ -55,22 +57,31 @@ impl ReminderSchedulerV2 for SimpleReminderScheduler {
         }
     }
 
-    fn cancel_reminder(
+    async fn cancel_reminder(
         &mut self,
         scheduled_reminder: super::ScheduledReminder,
     ) -> anyhow::Result<()> {
         if let Some((_, scheduled_reminder)) = self.tasks.remove_entry(&scheduled_reminder.id) {
-            task::spawn(async move {
-                scheduled_reminder
-                    .tx
-                    .send(ReminderEvent::Stop)
-                    .await
-                    .unwrap();
-            });
+            scheduled_reminder
+                .tx
+                .send(ReminderEvent::Stop)
+                .await
+                .unwrap();
+
             Ok(())
         } else {
             anyhow::bail!("No such reminder")
         }
+    }
+
+    async fn acknowledge_reminder(
+        &mut self,
+        scheduled_reminder: super::ScheduledReminder,
+    ) -> anyhow::Result<()> {
+        if let Some(task) = self.tasks.get(&scheduled_reminder.id) {
+            task.tx.send(ReminderEvent::Acknowledge).await.unwrap();
+        }
+        Ok(())
     }
 }
 
@@ -97,6 +108,7 @@ async fn handle_event(
     delivery: &impl ReminderDeliveryChannel,
     tx: mpsc::Sender<ReminderEvent>,
 ) -> ReminderState {
+    // println!("({current_state:?}, {event:?})");
     match (current_state, event) {
         (ReminderState::Pending, ReminderEvent::Schedule) => {
             let delay = get_target_delay(&reminder.fire_at.time(), Utc::now())
@@ -144,10 +156,11 @@ async fn handle_event(
                 attempts_left: attempts_left - 1,
             }
         }
-        (ReminderState::Nagging { .. }, ReminderEvent::Confirm) => {
+        (ReminderState::Nagging { .. }, ReminderEvent::Acknowledge) => {
             delivery
-                .send_reminder_notification(reminder, ReminderMessageType::Confirmation)
+                .send_reminder_notification(reminder, ReminderMessageType::Acknowledge)
                 .await;
+            
             task::spawn(async move {
                 tokio::time::sleep(CONFIRMATION_TIMEOUT).await;
                 let _ = tx.send(ReminderEvent::Trigger);
@@ -207,7 +220,7 @@ async fn handle_event(
 enum ReminderEvent {
     Schedule,
     Trigger,
-    Timeout,
+    Acknowledge,
     Confirm,
     Stop,
 }
