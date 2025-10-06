@@ -222,15 +222,6 @@ fn expected_delay(reminder: &Reminder) -> chrono::Duration {
     get_target_delay(&reminder.fire_at.time(), Utc::now())
 }
 
-fn reminder(fire_at: NaiveTime) -> Reminder {
-    Reminder {
-        id: 1,
-        state: ReminderState::Pending,
-        fire_at: ReminderFireTime::new(fire_at),
-        text: "".to_string(),
-    }
-}
-
 fn received_messages() -> ReceivedMessages {
     Arc::new(Mutex::new(vec![]))
 }
