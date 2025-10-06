@@ -80,7 +80,6 @@ async fn run_reminder(
     mut rx: mpsc::Receiver<ReminderEvent>,
     tx: mpsc::Sender<ReminderEvent>,
 ) {
-    // Todo: dispose of this task
     while let Some(event) = rx.recv().await {
         let new_state =
             handle_event(&reminder, &reminder.state, &event, delivery, tx.clone()).await;
@@ -93,12 +92,12 @@ async fn run_reminder(
 
 async fn handle_event(
     reminder: &Reminder,
-    current: &ReminderState,
+    current_state: &ReminderState,
     event: &ReminderEvent,
     delivery: &impl ReminderDeliveryChannel,
     tx: mpsc::Sender<ReminderEvent>,
 ) -> ReminderState {
-    match (current, event) {
+    match (current_state, event) {
         (ReminderState::Pending, ReminderEvent::Schedule) => {
             let delay = get_target_delay(&reminder.fire_at.time(), Utc::now())
                 .to_std()
@@ -232,162 +231,4 @@ pub(crate) fn get_target_delay(fire_at: &NaiveTime, now: DateTime<Utc>) -> chron
 }
 
 #[cfg(test)]
-mod target_datetime_tests {
-    use super::*;
-
-    use nadoeda_models::reminder::ReminderFireTime;
-    use chrono::NaiveDate;
-    use chrono::NaiveDateTime;
-    use chrono::NaiveTime;
-    use chrono::Timelike;
-    use proptest::prelude::*;
-    use proptest_arbitrary_interop::arb;
-
-    #[test]
-    pub fn when_firing_time_is_yet_to_come_target_delay_should_be_less_than_day() {
-        let now_utc = NaiveDateTime::new(
-            NaiveDate::from_ymd_opt(2025, 05, 31).unwrap(),
-            NaiveTime::from_hms_opt(12, 0, 0).unwrap(),
-        );
-        let now = DateTime::from_naive_utc_and_offset(now_utc, Utc);
-        let fire_at = NaiveTime::from_hms_opt(13, 0, 0).unwrap();
-
-        let delay = get_target_delay(&fire_at, now);
-
-        assert_eq!(
-            delay.num_hours(),
-            1,
-            "With given constraints the delay should be 1 hour."
-        );
-    }
-
-    #[test]
-    pub fn when_firing_time_is_passed_target_delay_should_be_next_day() {
-        let now_utc = NaiveDateTime::new(
-            NaiveDate::from_ymd_opt(2025, 05, 31).unwrap(),
-            NaiveTime::from_hms_opt(12, 0, 0).unwrap(),
-        );
-        let now = DateTime::from_naive_utc_and_offset(now_utc, Utc);
-
-        let fire_at = ReminderFireTime::new(NaiveTime::from_hms_opt(11, 0, 0).unwrap());
-        let delay = get_target_delay(&fire_at.time(), now);
-
-        assert_eq!(
-            delay.num_hours(),
-            23,
-            "With given constraints, the delay should be 23 hours"
-        );
-    }
-
-    proptest! {
-        #[test]
-        fn test_target_delay(
-            now_utc in arb::<NaiveDateTime>(),
-            fire_at in arb::<NaiveTime>()
-        ) {
-            let fire_at = fire_at.with_nanosecond(0).unwrap();
-            let now = DateTime::from_naive_utc_and_offset(now_utc.with_nanosecond(0).unwrap(), Utc);
-            let delay = get_target_delay(&fire_at, now);
-            let target_datetime = now + delay;
-
-            assert!(target_datetime > now, "Target time should always be in the future");
-            assert!(target_datetime.time() == fire_at, "Target time should be equal to fire_at time specified in the reminder. fire_at = {:?}, target_datetime.time() = {:?}, target_datetime = {:?}", fire_at, target_datetime.time(), target_datetime);
-            assert!(delay.num_days() <= 1, "Delay should be one day or less. delay.days = {}", delay.num_days())
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::{Arc, Mutex};
-
-    use async_trait::async_trait;
-    use nadoeda_models::reminder::ReminderFireTime;
-
-    use crate::managerv2::ScheduleRequest;
-
-    use super::*;
-    type ReceivedMessages = Arc<Mutex<Vec<ReminderMessageType>>>;
-
-    struct TestDeliveryChannel {
-        received_messages: ReceivedMessages,
-    }
-
-    #[async_trait]
-    impl ReminderDeliveryChannel for TestDeliveryChannel {
-        async fn send_reminder_notification(
-            &self,
-            _reminder: &Reminder,
-            message: ReminderMessageType,
-        ) {
-            self.received_messages.lock().unwrap().push(message);
-        }
-    }
-
-    #[tokio::test(start_paused = true)]
-    pub async fn scheduling_test() {
-        let received_messages = received_messages();
-        let delivery_channel = delivery_channel(&received_messages);
-        let mut scheduler = SimpleReminderScheduler::new();
-        let req = ScheduleRequest {
-            reminder: reminder(NaiveTime::from_hms_milli_opt(12, 0, 0, 0).unwrap()),
-        };
-        let expected_delay = get_target_delay(&req.reminder.fire_at.time(), Utc::now());
-        scheduler.schedule_reminder(req, delivery_channel).unwrap();
-
-        wait_for_trigger(expected_delay).await;
-
-        let msgs = received_messages.lock().unwrap();
-        assert_eq!(msgs.len(), 1);
-        assert_eq!(*msgs.first().unwrap(), ReminderMessageType::Fired);
-    }
-
-    #[tokio::test(start_paused = true)]
-    pub async fn stopping_test() {
-        let received_messages = received_messages();
-        let delivery_channel = delivery_channel(&received_messages);
-        let mut scheduler = SimpleReminderScheduler::new();
-        let req = ScheduleRequest {
-            reminder: reminder(NaiveTime::from_hms_milli_opt(12, 00, 00, 00).unwrap()),
-        };
-        let expected_delay = expected_delay(&req.reminder);
-
-        let scheduled_reminder = scheduler.schedule_reminder(req, delivery_channel).unwrap();
-        scheduler.cancel_reminder(scheduled_reminder).unwrap();
-
-        wait_for_trigger(expected_delay).await;
-        let msgs = received_messages.lock().unwrap();
-        assert_eq!(msgs.len(), 1);
-        assert_eq!(*msgs.first().unwrap(), ReminderMessageType::Stopped);
-
-        wait_for_trigger(expected_delay).await;
-    }
-
-    async fn wait_for_trigger(expected_delay: chrono::Duration) {
-        tokio::time::sleep(expected_delay.to_std().unwrap() + std::time::Duration::from_secs(15))
-            .await
-    }
-
-    fn expected_delay(reminder: &Reminder) -> chrono::Duration {
-        get_target_delay(&reminder.fire_at.time(), Utc::now())
-    }
-
-    fn reminder(fire_at: NaiveTime) -> Reminder {
-        Reminder {
-            id: 1,
-            state: ReminderState::Pending,
-            fire_at: ReminderFireTime::new(fire_at),
-            text: "".to_string(),
-        }
-    }
-
-    fn received_messages() -> ReceivedMessages {
-        Arc::new(Mutex::new(vec![]))
-    }
-
-    fn delivery_channel(msgs: &ReceivedMessages) -> TestDeliveryChannel {
-        TestDeliveryChannel {
-            received_messages: Arc::clone(msgs),
-        }
-    }
-}
+mod tests;
