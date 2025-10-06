@@ -160,7 +160,7 @@ async fn handle_event(
             delivery
                 .send_reminder_notification(reminder, ReminderMessageType::Acknowledge)
                 .await;
-            
+
             task::spawn(async move {
                 tokio::time::sleep(CONFIRMATION_TIMEOUT).await;
                 let _ = tx.send(ReminderEvent::Trigger);
