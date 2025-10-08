@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 use crate::managerv2::ScheduleRequest;
 use async_trait::async_trait;
 use nadoeda_models::reminder::ReminderFireTime;
-use proptest::prelude::*;
+use proptest::{prelude::*, strategy};
 use test_strategy::proptest;
 
 use super::*;
@@ -88,10 +88,7 @@ async fn stopping_proptest(#[strategy(0..24u32)] hours: u32, #[strategy(0..60u32
     let msgs = ctx.received_messages.lock().unwrap();
 
     println!("{:?}", msgs);
-    prop_assert!(matches!(
-        msgs[..],
-        [ReminderMessageType::Stopped]
-    ));
+    prop_assert!(matches!(msgs[..], [ReminderMessageType::Stopped]));
 }
 
 #[proptest(async=tokio_ct)]
@@ -154,6 +151,70 @@ async fn confirmation_proptest(
         ]
     ));
 }
+
+#[proptest(async=tokio_ct)]
+ async fn nagging_timeout_proptest(
+    #[strategy(0..24u32)] hours: u32,
+     #[strategy(0..60u32)] minutes: u32) {
+    let mut ctx = TestContext::new();
+    let req = schedule_request(hours, minutes);
+    let expected_delay = expected_delay(&req.reminder);
+
+    let scheduled_reminder = ctx
+        .scheduler
+        .schedule_reminder(req, ctx.delivery_channel)
+        .unwrap();
+
+    wait(expected_delay * 999).await; // Very long wait
+
+    let msgs = ctx.received_messages.lock().unwrap();
+
+    prop_assert_eq!(
+        msgs.iter()
+            .filter(|i| matches!(i, ReminderMessageType::Nag))
+            .count(),
+        NAGGING_ATTEMPTS as usize
+    );
+
+     prop_assert_eq!(*msgs.last().unwrap(), ReminderMessageType::Timeout)
+}
+
+#[proptest(async=tokio_ct)]
+async fn confirmation_timeout_proptest(
+    #[strategy(0..24u32)] hours: u32,
+     #[strategy(0..60u32)] minutes: u32) {
+    let mut ctx = TestContext::new();
+    let req = schedule_request(hours, minutes);
+    let expected_delay = expected_delay(&req.reminder);
+
+    let scheduled_reminder = ctx
+        .scheduler
+        .schedule_reminder(req, ctx.delivery_channel)
+        .unwrap();
+
+    wait(expected_delay).await;
+
+    ctx.scheduler
+        .acknowledge_reminder(scheduled_reminder)
+        .await
+        .unwrap();
+
+    let expected_confirmation_delay = chrono::Duration::from_std(CONFIRMATION_TIMEOUT).unwrap();
+
+    wait(expected_confirmation_delay * 999).await; // very long wait
+    
+    let msgs = ctx.received_messages.lock().unwrap();
+
+    prop_assert_eq!(
+        msgs.iter()
+            .filter(|i| matches!(i, ReminderMessageType::Confirmation))
+            .count(),
+        CONFIRMATION_ATTEMPTS as usize
+    );
+
+    prop_assert_eq!(*msgs.last().unwrap(), ReminderMessageType::Timeout);
+}
+
 
 #[tokio::test(start_paused = true)]
 pub async fn scheduling_test() {
@@ -238,6 +299,7 @@ pub async fn confirmation_test() {
         .acknowledge_reminder(scheduled_reminder)
         .await
         .unwrap();
+
     let expected_confirmation_delay = chrono::Duration::from_std(CONFIRMATION_TIMEOUT).unwrap();
 
     wait(expected_confirmation_delay * 2).await;
@@ -253,6 +315,65 @@ pub async fn confirmation_test() {
             ..
         ]
     ));
+}
+
+#[tokio::test(start_paused = true)]
+pub async fn nagging_timeout_test() {
+    let mut ctx = TestContext::new();
+    let req = schedule_request(12, 00);
+    let expected_delay = expected_delay(&req.reminder);
+
+    let scheduled_reminder = ctx
+        .scheduler
+        .schedule_reminder(req, ctx.delivery_channel)
+        .unwrap();
+
+    wait(expected_delay * 999).await; // Very long wait
+
+    let msgs = ctx.received_messages.lock().unwrap();
+
+    assert_eq!(
+        msgs.iter()
+            .filter(|i| matches!(i, ReminderMessageType::Nag))
+            .count(),
+        NAGGING_ATTEMPTS as usize
+    );
+
+    assert_eq!(*msgs.last().unwrap(), ReminderMessageType::Timeout)
+}
+
+#[tokio::test(start_paused = true)]
+pub async fn confirmation_timeout_test() {
+    let mut ctx = TestContext::new();
+    let req = schedule_request(12, 00);
+    let expected_delay = expected_delay(&req.reminder);
+
+    let scheduled_reminder = ctx
+        .scheduler
+        .schedule_reminder(req, ctx.delivery_channel)
+        .unwrap();
+
+    wait(expected_delay).await;
+
+    ctx.scheduler
+        .acknowledge_reminder(scheduled_reminder)
+        .await
+        .unwrap();
+
+    let expected_confirmation_delay = chrono::Duration::from_std(CONFIRMATION_TIMEOUT).unwrap();
+
+    wait(expected_confirmation_delay * 999).await; // very long wait
+    
+    let msgs = ctx.received_messages.lock().unwrap();
+
+    assert_eq!(
+        msgs.iter()
+            .filter(|i| matches!(i, ReminderMessageType::Confirmation))
+            .count(),
+        CONFIRMATION_ATTEMPTS as usize
+    );
+
+    assert_eq!(*msgs.last().unwrap(), ReminderMessageType::Timeout);
 }
 
 async fn wait(expected_delay: chrono::Duration) {
