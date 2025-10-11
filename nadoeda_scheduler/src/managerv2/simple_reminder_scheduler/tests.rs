@@ -73,7 +73,7 @@ async fn scheduling_proptest(#[strategy(time_strategy())] time: NaiveTime) {
     wait(expected_delay).await;
 
     let msgs = ctx.received_messages.lock().unwrap();
-    prop_assert_eq!(&msgs[..], &[ReminderMessageType::Fired]);
+    prop_assert_eq!(&msgs[..], &[ReminderMessageType::Scheduled, ReminderMessageType::Fired]);
 }
 
 #[proptest(async = tokio_ct)]
@@ -112,9 +112,10 @@ async fn nagging_proptest(#[strategy(time_strategy())] time: NaiveTime) {
     wait(chrono::Duration::from_std(NAGGING_TIMEOUT).unwrap()).await;
 
     let msgs = ctx.received_messages.lock().unwrap();
-    prop_assert!(msgs.len() >= 2);
-    prop_assert_eq!(msgs[0], ReminderMessageType::Fired);
-    prop_assert_eq!(msgs[1], ReminderMessageType::Nag);
+    prop_assert!(msgs.len() >= 3);
+    prop_assert_eq!(msgs[0], ReminderMessageType::Scheduled);
+    prop_assert_eq!(msgs[1], ReminderMessageType::Fired);
+    prop_assert_eq!(msgs[2], ReminderMessageType::Nag);
 }
 
 #[proptest(async = tokio_ct)]
@@ -138,10 +139,11 @@ async fn confirmation_proptest(#[strategy(time_strategy())] time: NaiveTime) {
     wait(chrono::Duration::from_std(CONFIRMATION_TIMEOUT - Duration::from_secs(1)).unwrap()).await;
 
     let msgs = ctx.received_messages.lock().unwrap();
-    prop_assert!(msgs.len() >= 3, "msgs.len() = {}", msgs.len());
-    prop_assert_eq!(msgs[0], ReminderMessageType::Fired);
-    prop_assert_eq!(msgs[1], ReminderMessageType::Acknowledge);
-    prop_assert_eq!(msgs[2], ReminderMessageType::Confirmation);
+    prop_assert!(msgs.len() >= 4, "msgs.len() = {}", msgs.len());
+    prop_assert_eq!(msgs[0], ReminderMessageType::Scheduled);
+    prop_assert_eq!(msgs[1], ReminderMessageType::Fired);
+    prop_assert_eq!(msgs[2], ReminderMessageType::Acknowledge);
+    prop_assert_eq!(msgs[3], ReminderMessageType::Confirmation);
 }
 
 #[proptest(async = tokio_ct)]

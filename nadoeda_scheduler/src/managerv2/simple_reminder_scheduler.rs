@@ -114,6 +114,8 @@ async fn handle_event(
             let delay = get_target_delay(&reminder.fire_at.time(), Utc::now())
                 .to_std()
                 .unwrap();
+            
+            delivery.send_reminder_notification(reminder, ReminderMessageType::Scheduled).await;
 
             task::spawn(async move {
                 tokio::time::sleep(delay).await;
