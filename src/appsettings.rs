@@ -1,20 +1,9 @@
 use std::sync::OnceLock;
+use nadoeda_models::settings::Settings;
 
 use config::{Config, ConfigError, Environment, File};
-use serde::Deserialize;
 
-#[derive(Deserialize, Debug)]
-pub struct TelegramSettings {
-    pub token: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct AppSettings {
-    pub telegram: TelegramSettings,
-}
-
-impl AppSettings {
-    fn new() -> Result<Self, ConfigError> {
+fn load_settings() -> Result<Settings, ConfigError> {
         let settings = Config::builder()
             .add_source(File::with_name("appsettings").required(true))
             .add_source(File::with_name("appsettings.local").required(false))
@@ -22,10 +11,9 @@ impl AppSettings {
             .build()?;
 
         settings.try_deserialize()
-    }
 }
 
-pub fn get() -> &'static AppSettings {
-    static APPSETTINGS: OnceLock<AppSettings> = OnceLock::new();
-    APPSETTINGS.get_or_init(|| AppSettings::new().unwrap())
+pub fn get() -> &'static Settings {
+    static APPSETTINGS: OnceLock<Settings> = OnceLock::new();
+    APPSETTINGS.get_or_init(|| load_settings().unwrap())
 }
