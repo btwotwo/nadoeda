@@ -1,4 +1,3 @@
-mod actor;
 mod appsettings;
 mod reminder;
 mod scheduling;

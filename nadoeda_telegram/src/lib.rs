@@ -1,6 +1,7 @@
 mod create_daily_reminder;
 mod delivery_channel;
 mod edit_reminders;
+mod delivery_channel_store;
 
 use create_daily_reminder::CreatingDailyReminderState;
 pub use delivery_channel::TelegramDeliveryChannel;

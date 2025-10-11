@@ -1,4 +1,3 @@
-
 use chrono::NaiveTime;
 use dptree::case;
 use teloxide::dispatching::UpdateHandler;
@@ -9,9 +8,7 @@ use teloxide::{Bot, types::Message};
 use nadoeda_models::reminder::ReminderFireTime;
 use nadoeda_storage::NewReminder;
 
-use super::{
-    GlobalCommand, GlobalDialogue, GlobalState, HandlerResult,
-};
+use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub(super) enum CreatingDailyReminderState {
@@ -180,44 +177,42 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
         )
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use teloxide::{
-//         dispatching::dialogue::{self, InMemStorage},
-//         dptree::deps,
-//     };
-//     use teloxide_tests::{MockBot, MockMessageText};
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
 
+    use nadoeda_storage::{InMemoryReminderStorage, ReminderStorage};
+    use teloxide::{
+        dispatching::dialogue::{self, InMemStorage},
+        dptree::deps,
+    };
+    use teloxide_tests::{MockBot, MockMessageText};
 
-//     use super::*;
+    use super::*;
 
-//     #[tokio::test]
-//     async fn test() {
-//         let reminder_storage: Arc<dyn ReminderStorage> = Arc::new(InMemoryReminderStorage::new());
-//         let schema =
-//             dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>().branch(schema());
-//         let mut bot = MockBot::new(MockMessageText::new().text("New Reminder"), schema);
-//         let worker_factory = PrinterWorkerFactory;
+    #[tokio::test]
+    async fn test() {
+        let reminder_storage: Arc<dyn ReminderStorage> = Arc::new(InMemoryReminderStorage::new());
+        let schema =
+            dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>().branch(schema());
+        let mut bot = MockBot::new(MockMessageText::new().text("New Reminder"), schema);
 
-//         let manager = ReminderManager::create(worker_factory);
-//         let manager: Arc<dyn ReminderManagerTrait> = Arc::new(manager);
+        bot.dependencies(deps![
+            reminder_storage,
+            InMemStorage::<GlobalState>::new(),
+            GlobalState::Idle
+        ]);
 
-//         bot.dependencies(deps![
-//             reminder_storage,
-//             InMemStorage::<GlobalState>::new(),
-//             manager,
-//             GlobalState::Idle
-//         ]);
-//         bot.set_state(GlobalState::CreatingDailyReminder(
-//             CreatingDailyReminderState::WaitingForReminderText,
-//         ))
-//         .await;
+        bot.set_state(GlobalState::CreatingDailyReminder(
+            CreatingDailyReminderState::WaitingForReminderText,
+        ))
+        .await;
 
-//         bot.dispatch_and_check_state(GlobalState::CreatingDailyReminder(
-//             CreatingDailyReminderState::WaitingForFiringTime {
-//                 text: "New Reminder".to_string(),
-//             },
-//         ))
-//         .await;
-//     }
-// }
+        bot.dispatch_and_check_state(GlobalState::CreatingDailyReminder(
+            CreatingDailyReminderState::WaitingForFiringTime {
+                text: "New Reminder".to_string(),
+            },
+        ))
+        .await;
+    }
+}

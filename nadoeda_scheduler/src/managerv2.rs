@@ -1,4 +1,4 @@
-mod simple_reminder_scheduler;
+pub mod simple_reminder_scheduler;
 
 use async_trait::async_trait;
 
