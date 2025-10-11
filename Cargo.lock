@@ -2043,6 +2043,7 @@ dependencies = [
  "config",
  "dotenvy",
  "log",
+ "nadoeda_models",
  "pretty_env_logger",
  "proptest",
  "proptest-arbitrary-interop",
@@ -2058,6 +2059,7 @@ name = "nadoeda_models"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "serde",
 ]
 
 [[package]]
