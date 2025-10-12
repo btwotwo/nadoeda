@@ -9,7 +9,7 @@ use tokio::{
 
 use nadoeda_models::reminder::{Reminder, ReminderId, ReminderState};
 
-use super::{ReminderDeliveryChannel, ReminderMessageType, ReminderSchedulerV2};
+use super::{ReminderDeliveryChannel, ReminderMessageType, ReminderScheduler};
 
 const NAGGING_ATTEMPTS: u8 = 10;
 const NAGGING_TIMEOUT: Duration = Duration::from_secs(30);
@@ -35,7 +35,7 @@ impl SimpleReminderScheduler {
 }
 
 #[async_trait]
-impl ReminderSchedulerV2 for SimpleReminderScheduler {
+impl ReminderScheduler for SimpleReminderScheduler {
     fn schedule_reminder(
         &mut self,
         schedule_request: super::ScheduleRequest,

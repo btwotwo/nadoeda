@@ -30,7 +30,7 @@ pub trait ReminderDeliveryChannel: Send + Sync + 'static {
 }
 
 #[async_trait]
-pub trait ReminderSchedulerV2: Send + Sync + 'static {
+pub trait ReminderScheduler: Send + Sync + 'static {
     fn schedule_reminder(
         &mut self,
         schedule_request: ScheduleRequest,
