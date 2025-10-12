@@ -1,5 +1,6 @@
 use std::{collections::HashMap, time::Duration};
 
+
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
 use tokio::{
@@ -9,7 +10,9 @@ use tokio::{
 
 use nadoeda_models::reminder::{Reminder, ReminderId, ReminderState};
 
-use super::{ReminderDeliveryChannel, ReminderMessageType, ReminderScheduler};
+use crate::{ReminderDeliveryChannel, ReminderMessageType};
+
+use super::ReminderScheduler;
 
 const NAGGING_ATTEMPTS: u8 = 10;
 const NAGGING_TIMEOUT: Duration = Duration::from_secs(30);
