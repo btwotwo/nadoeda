@@ -1,9 +1,7 @@
-mod target_datetime_tests;
-
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use crate::manager::ScheduleRequest;
+use crate::scheduler::ScheduleRequest;
 use crate::ReminderMessageType;
 use async_trait::async_trait;
 use chrono::{NaiveTime, Utc};
@@ -29,8 +27,7 @@ impl ReminderDeliveryChannel for TestDeliveryChannel {
 
 struct TestContext {
     pub received_messages: ReceivedMessages,
-    pub delivery_channel: TestDeliveryChannel,
-    pub scheduler: SimpleReminderScheduler,
+    pub scheduler: DeliveryReminderScheduler,
 }
 
 impl TestContext {
@@ -39,11 +36,10 @@ impl TestContext {
         let delivery_channel = TestDeliveryChannel {
             received_messages: received_messages.clone(),
         };
-        let scheduler = SimpleReminderScheduler::new(Arc::new(delivery_channel.clone()));
+        let scheduler = DeliveryReminderScheduler::new(Arc::new(delivery_channel.clone()));
 
         Self {
             received_messages,
-            delivery_channel,
             scheduler,
         }
     }

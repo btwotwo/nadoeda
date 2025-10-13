@@ -5,7 +5,6 @@ use chrono::NaiveDateTime;
 use chrono::NaiveTime;
 use chrono::Timelike;
 use nadoeda_models::reminder::ReminderFireTime;
-use proptest::prelude::*;
 use proptest_arbitrary_interop::arb;
 
 #[test]

@@ -1,6 +1,7 @@
-mod manager;
+mod scheduler;
+mod delivery_reminder_scheduler;
 
-pub use manager::{ReminderScheduler, ScheduledReminder};
+pub use scheduler::{ReminderScheduler, ScheduledReminder};
 
-pub use manager::simple_reminder_scheduler::SimpleReminderScheduler;
-pub use manager::simple_reminder_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
+pub use delivery_reminder_scheduler::DeliveryReminderScheduler;
+pub use delivery_reminder_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};

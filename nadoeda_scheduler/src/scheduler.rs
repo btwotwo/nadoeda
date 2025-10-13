@@ -1,18 +1,15 @@
-pub mod simple_reminder_scheduler;
-
 use async_trait::async_trait;
 
 use nadoeda_models::reminder::{Reminder, ReminderId};
 
 
 pub struct ScheduleRequest {
-    reminder: Reminder,
+    pub(crate) reminder: Reminder,
 }
 
 pub struct ScheduledReminder {
-    id: ReminderId,
+    pub(crate) id: ReminderId,
 }
-
 
 #[async_trait]
 pub trait ReminderScheduler: Send + Sync + 'static {

@@ -1,7 +1,9 @@
 pub mod delivery;
 
 use std::{
-    collections::{hash_map::Entry, HashMap}, sync::Arc, time::Duration
+    collections::{HashMap, hash_map::Entry},
+    sync::Arc,
+    time::Duration,
 };
 
 use async_trait::async_trait;
@@ -13,7 +15,7 @@ use tokio::{
 
 use nadoeda_models::reminder::{Reminder, ReminderId, ReminderState};
 
-use crate::{ReminderDeliveryChannel, ReminderMessageType};
+use crate::{ReminderDeliveryChannel, ReminderMessageType, scheduler::ScheduleRequest};
 
 use super::ReminderScheduler;
 
@@ -28,12 +30,12 @@ struct ScheduledReminderHandle {
     tx: mpsc::Sender<ReminderEvent>,
 }
 
-pub struct SimpleReminderScheduler {
+pub struct DeliveryReminderScheduler {
     tasks: HashMap<ReminderId, ScheduledReminderHandle>,
-    delivery_channel: Arc<dyn ReminderDeliveryChannel>
+    delivery_channel: Arc<dyn ReminderDeliveryChannel>,
 }
 
-impl SimpleReminderScheduler {
+impl DeliveryReminderScheduler {
     pub fn new(delivery_channel: Arc<dyn ReminderDeliveryChannel>) -> Self {
         Self {
             tasks: HashMap::new(),
@@ -43,10 +45,10 @@ impl SimpleReminderScheduler {
 }
 
 #[async_trait]
-impl ReminderScheduler for SimpleReminderScheduler {
+impl ReminderScheduler for DeliveryReminderScheduler {
     fn schedule_reminder(
         &mut self,
-        schedule_request: super::ScheduleRequest,
+        schedule_request: ScheduleRequest,
     ) -> anyhow::Result<super::ScheduledReminder> {
         let reminder_id = schedule_request.reminder.id;
         if let Entry::Vacant(e) = self.tasks.entry(reminder_id) {
@@ -55,7 +57,13 @@ impl ReminderScheduler for SimpleReminderScheduler {
             let delivery_channel = self.delivery_channel.clone();
             let task = task::spawn(async move {
                 tx_clone.send(ReminderEvent::Schedule).await.unwrap();
-                run_reminder(schedule_request.reminder, delivery_channel.as_ref(), rx, tx_clone).await;
+                run_reminder(
+                    schedule_request.reminder,
+                    delivery_channel.as_ref(),
+                    rx,
+                    tx_clone,
+                )
+                .await;
             });
             let scheduled_reminder = ScheduledReminderHandle { task, tx };
             e.insert(scheduled_reminder);
