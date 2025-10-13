@@ -141,7 +141,7 @@ async fn confirm_reminder(
         id: reminder_id,
         text: "Rroro".to_string(),
         state: ReminderState::Pending,
-        fire_at: ReminderFireTime::new(NaiveTime::from_hms_opt(12, 0, 0).unwrap()),
+        fire_at: ReminderFireTime::new(firing_time),
     };
     // let reminder = storage
     //     .get(reminder_id)

@@ -2038,18 +2038,37 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "chrono",
- "chrono-tz",
  "config",
  "dotenvy",
  "log",
+ "nadoeda_delivery_scheduler",
  "nadoeda_models",
+ "nadoeda_scheduler",
+ "nadoeda_storage",
+ "nadoeda_telegram",
  "pretty_env_logger",
  "proptest",
  "proptest-arbitrary-interop",
  "serde",
- "teloxide",
  "teloxide_tests",
+ "tokio",
+ "tokio-util",
+]
+
+[[package]]
+name = "nadoeda_delivery_scheduler"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "chrono",
+ "chrono-tz",
+ "log",
+ "nadoeda_models",
+ "nadoeda_scheduler",
+ "proptest",
+ "proptest-arbitrary-interop",
+ "test-strategy",
  "tokio",
  "tokio-util",
 ]
@@ -2068,15 +2087,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "chrono",
- "chrono-tz",
- "log",
  "nadoeda_models",
- "proptest",
- "proptest-arbitrary-interop",
- "test-strategy",
- "tokio",
- "tokio-util",
 ]
 
 [[package]]

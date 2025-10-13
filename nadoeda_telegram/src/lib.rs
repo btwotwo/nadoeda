@@ -1,9 +1,9 @@
 mod create_daily_reminder;
-mod delivery_channel;
 mod edit_reminders;
 
+pub use teloxide;
+
 use create_daily_reminder::CreatingDailyReminderState;
-pub use delivery_channel::TelegramDeliveryChannel;
 use dptree::case;
 use nadoeda_scheduler::ReminderScheduler;
 use nadoeda_storage::ReminderStorage;
@@ -25,8 +25,7 @@ enum GlobalState {
 
 pub struct TelegramInteractionInterface;
 impl TelegramInteractionInterface {
-    pub async fn start(telegram_token: String, scheduler: Arc<dyn ReminderScheduler>, reminder_storage: Arc<dyn ReminderStorage>) {
-        let bot = Bot::new(telegram_token);
+    pub async fn start(bot: teloxide::Bot, scheduler: Arc<dyn ReminderScheduler>, reminder_storage: Arc<dyn ReminderStorage>) {
         log::info!("Starting Telegram interaction interface");
 
         let cancel_handler = Update::filter_message().branch(

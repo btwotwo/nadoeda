@@ -1,6 +1,6 @@
 [workspace]
 resolver  = "3"
-members = [ "nadoeda_models","nadoeda_scheduler", "nadoeda_storage", "nadoeda_telegram"]
+members = [ "nadoeda_models","nadoeda_scheduler", "nadoeda_storage", "nadoeda_telegram", "nadoeda_scheduler/delivery_scheduler"]
 
 [package]
 name = "nadoeda"
@@ -14,17 +14,19 @@ edition = "2024"
 # libsqlite3-sys = { version = "0.30", features = ["bundled"] }
 dotenvy = "0.15"
 tokio = { version = "1", features = ["full", "test-util"] }
-chrono =  {version = "0.4.41", features = ["arbitrary"] }
-chrono-tz = "0.10.3"
 tokio-util = "0.7.15"
 anyhow = "1.0.98"
 config = "0.15.11"
 serde = { version = "1.0.219", features = ["derive"] }
-teloxide = { version = "0.17.0", features = ["macros"] }
 log = "0.4"
 pretty_env_logger = "0.5"
 async-trait = "0.1.88"
-nadoeda_models = { version = "0.1.0", path = "nadoeda_models" }
+nadoeda_models = { path = "nadoeda_models" }
+nadoeda_scheduler = { path = "nadoeda_scheduler" }
+nadoeda_delivery_scheduler  = { path = "nadoeda_scheduler/delivery_scheduler" }
+nadoeda_storage = { path = "nadoeda_storage" }
+nadoeda_telegram = { path = "nadoeda_telegram" }
+
 
 [dev-dependencies]
 proptest  = "1"
