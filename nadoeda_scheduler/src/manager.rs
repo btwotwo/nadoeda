@@ -4,7 +4,6 @@ use async_trait::async_trait;
 
 use nadoeda_models::reminder::{Reminder, ReminderId};
 
-use crate::ReminderDeliveryChannel;
 
 pub struct ScheduleRequest {
     reminder: Reminder,
