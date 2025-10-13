@@ -15,6 +15,7 @@ use super::*;
 
 type ReceivedMessages = Arc<Mutex<Vec<ReminderMessageType>>>;
 
+#[derive(Clone)]
 struct TestDeliveryChannel {
     received_messages: ReceivedMessages,
 }
@@ -38,7 +39,7 @@ impl TestContext {
         let delivery_channel = TestDeliveryChannel {
             received_messages: received_messages.clone(),
         };
-        let scheduler = SimpleReminderScheduler::new();
+        let scheduler = SimpleReminderScheduler::new(Arc::new(delivery_channel.clone()));
 
         Self {
             received_messages,
@@ -68,7 +69,7 @@ async fn scheduling_proptest(#[strategy(time_strategy())] time: NaiveTime) {
     let expected_delay = expected_delay(&req.reminder);
 
     ctx.scheduler
-        .schedule_reminder(req, ctx.delivery_channel)
+        .schedule_reminder(req)
         .unwrap();
 
     wait(expected_delay).await;
@@ -85,7 +86,7 @@ async fn stopping_proptest(#[strategy(time_strategy())] time: NaiveTime) {
 
     let scheduled_reminder = ctx
         .scheduler
-        .schedule_reminder(req, ctx.delivery_channel)
+        .schedule_reminder(req)
         .unwrap();
 
     ctx.scheduler
@@ -106,7 +107,7 @@ async fn nagging_proptest(#[strategy(time_strategy())] time: NaiveTime) {
     let expected_delay = expected_delay(&req.reminder);
 
     ctx.scheduler
-        .schedule_reminder(req, ctx.delivery_channel)
+        .schedule_reminder(req)
         .unwrap();
 
     wait(expected_delay).await;
@@ -127,7 +128,7 @@ async fn confirmation_proptest(#[strategy(time_strategy())] time: NaiveTime) {
 
     let scheduled_reminder = ctx
         .scheduler
-        .schedule_reminder(req, ctx.delivery_channel)
+        .schedule_reminder(req)
         .unwrap();
 
     wait(expected_delay).await;
@@ -154,7 +155,7 @@ async fn nagging_timeout_proptest(#[strategy(time_strategy())] time: NaiveTime) 
     let expected_delay = expected_delay(&req.reminder);
 
     ctx.scheduler
-        .schedule_reminder(req, ctx.delivery_channel)
+        .schedule_reminder(req)
         .unwrap();
 
     wait(expected_delay * 999).await; // Very long time
@@ -177,7 +178,7 @@ async fn confirmation_timeout_proptest(#[strategy(time_strategy())] time: NaiveT
 
     let scheduled_reminder = ctx
         .scheduler
-        .schedule_reminder(req, ctx.delivery_channel)
+        .schedule_reminder(req)
         .unwrap();
 
     wait(expected_delay).await;

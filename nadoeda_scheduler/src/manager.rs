@@ -20,7 +20,6 @@ pub trait ReminderScheduler: Send + Sync + 'static {
     fn schedule_reminder(
         &mut self,
         schedule_request: ScheduleRequest,
-        delivery_channel: impl ReminderDeliveryChannel,
     ) -> anyhow::Result<ScheduledReminder>;
 
     async fn cancel_reminder(

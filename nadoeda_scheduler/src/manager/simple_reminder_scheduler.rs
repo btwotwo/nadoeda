@@ -1,5 +1,8 @@
-use std::{collections::HashMap, time::Duration};
+pub mod delivery;
 
+use std::{
+    collections::{hash_map::Entry, HashMap}, ops::Rem, sync::Arc, time::Duration
+};
 
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
@@ -27,12 +30,14 @@ struct ScheduledReminderHandle {
 
 pub struct SimpleReminderScheduler {
     tasks: HashMap<ReminderId, ScheduledReminderHandle>,
+    delivery_channel: Arc<dyn ReminderDeliveryChannel>
 }
 
 impl SimpleReminderScheduler {
-    pub fn new() -> Self {
+    pub fn new(delivery_channel: Arc<dyn ReminderDeliveryChannel>) -> Self {
         Self {
             tasks: HashMap::new(),
+            delivery_channel,
         }
     }
 }
@@ -42,15 +47,15 @@ impl ReminderScheduler for SimpleReminderScheduler {
     fn schedule_reminder(
         &mut self,
         schedule_request: super::ScheduleRequest,
-        delivery_channel: impl ReminderDeliveryChannel,
     ) -> anyhow::Result<super::ScheduledReminder> {
         let reminder_id = schedule_request.reminder.id;
-        if let std::collections::hash_map::Entry::Vacant(e) = self.tasks.entry(reminder_id) {
+        if let Entry::Vacant(e) = self.tasks.entry(reminder_id) {
             let (tx, rx) = mpsc::channel(10);
             let tx_clone = tx.clone();
+            let delivery_channel = self.delivery_channel.clone();
             let task = task::spawn(async move {
                 tx_clone.send(ReminderEvent::Schedule).await.unwrap();
-                run_reminder(schedule_request.reminder, &delivery_channel, rx, tx_clone).await;
+                run_reminder(schedule_request.reminder, delivery_channel.as_ref(), rx, tx_clone).await;
             });
             let scheduled_reminder = ScheduledReminderHandle { task, tx };
             e.insert(scheduled_reminder);
@@ -90,7 +95,7 @@ impl ReminderScheduler for SimpleReminderScheduler {
 
 async fn run_reminder(
     mut reminder: Reminder,
-    delivery: &impl ReminderDeliveryChannel,
+    delivery: &dyn ReminderDeliveryChannel,
     mut rx: mpsc::Receiver<ReminderEvent>,
     tx: mpsc::Sender<ReminderEvent>,
 ) {
@@ -108,7 +113,7 @@ async fn handle_event(
     reminder: &Reminder,
     current_state: &ReminderState,
     event: &ReminderEvent,
-    delivery: &impl ReminderDeliveryChannel,
+    delivery: &dyn ReminderDeliveryChannel,
     tx: mpsc::Sender<ReminderEvent>,
 ) -> ReminderState {
     // println!("({current_state:?}, {event:?})");
@@ -117,8 +122,10 @@ async fn handle_event(
             let delay = get_target_delay(&reminder.fire_at.time(), Utc::now())
                 .to_std()
                 .unwrap();
-            
-            delivery.send_reminder_notification(reminder, ReminderMessageType::Scheduled).await;
+
+            delivery
+                .send_reminder_notification(reminder, ReminderMessageType::Scheduled)
+                .await;
 
             task::spawn(async move {
                 tokio::time::sleep(delay).await;
