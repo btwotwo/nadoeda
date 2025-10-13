@@ -9,7 +9,7 @@ use std::{
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
 use tokio::{
-    sync::mpsc,
+    sync::{mpsc, RwLock},
     task::{self, JoinHandle},
 };
 
@@ -31,14 +31,14 @@ struct ScheduledReminderHandle {
 }
 
 pub struct DeliveryReminderScheduler {
-    tasks: HashMap<ReminderId, ScheduledReminderHandle>,
+    tasks: RwLock<HashMap<ReminderId, ScheduledReminderHandle>>,
     delivery_channel: Arc<dyn ReminderDeliveryChannel>,
 }
 
 impl DeliveryReminderScheduler {
     pub fn new(delivery_channel: Arc<dyn ReminderDeliveryChannel>) -> Self {
         Self {
-            tasks: HashMap::new(),
+            tasks: RwLock::new(HashMap::new()),
             delivery_channel,
         }
     }
@@ -46,12 +46,12 @@ impl DeliveryReminderScheduler {
 
 #[async_trait]
 impl ReminderScheduler for DeliveryReminderScheduler {
-    fn schedule_reminder(
-        &mut self,
+    async fn schedule_reminder(
+        &self,
         schedule_request: ScheduleRequest,
     ) -> anyhow::Result<super::ScheduledReminder> {
         let reminder_id = schedule_request.reminder.id;
-        if let Entry::Vacant(e) = self.tasks.entry(reminder_id) {
+        if let Entry::Vacant(e) = self.tasks.write().await.entry(reminder_id) {
             let (tx, rx) = mpsc::channel(10);
             let tx_clone = tx.clone();
             let delivery_channel = self.delivery_channel.clone();
@@ -74,15 +74,14 @@ impl ReminderScheduler for DeliveryReminderScheduler {
     }
 
     async fn cancel_reminder(
-        &mut self,
-        scheduled_reminder: super::ScheduledReminder,
+        &self,
+        scheduled_reminder: &super::ScheduledReminder,
     ) -> anyhow::Result<()> {
-        if let Some((_, scheduled_reminder)) = self.tasks.remove_entry(&scheduled_reminder.id) {
+        if let Some((_, scheduled_reminder)) = self.tasks.write().await.remove_entry(&scheduled_reminder.id) {
             scheduled_reminder
                 .tx
                 .send(ReminderEvent::Stop)
-                .await
-                .unwrap();
+                .await?;
 
             Ok(())
         } else {
@@ -91,12 +90,23 @@ impl ReminderScheduler for DeliveryReminderScheduler {
     }
 
     async fn acknowledge_reminder(
-        &mut self,
-        scheduled_reminder: super::ScheduledReminder,
+        &self,
+        scheduled_reminder: &super::ScheduledReminder,
     ) -> anyhow::Result<()> {
-        if let Some(task) = self.tasks.get(&scheduled_reminder.id) {
-            task.tx.send(ReminderEvent::Acknowledge).await.unwrap();
+        if let Some(task) = self.tasks.read().await.get(&scheduled_reminder.id) {
+            task.tx.send(ReminderEvent::Acknowledge).await?;
         }
+        Ok(())
+    }
+
+    async fn confirm_reminder(
+        &self,
+        scheduled_reminder: &super::ScheduledReminder,
+    ) -> anyhow::Result<()> {
+        if let Some(task) = self.tasks.read().await.get(&scheduled_reminder.id) {
+            task.tx.send(ReminderEvent::Confirm).await?;
+        }
+
         Ok(())
     }
 }

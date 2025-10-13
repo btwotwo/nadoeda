@@ -5,6 +5,7 @@ mod edit_reminders;
 use create_daily_reminder::CreatingDailyReminderState;
 pub use delivery_channel::TelegramDeliveryChannel;
 use dptree::case;
+use nadoeda_scheduler::ReminderScheduler;
 use nadoeda_storage::ReminderStorage;
 use std::sync::Arc;
 use teloxide::{
@@ -24,7 +25,7 @@ enum GlobalState {
 
 pub struct TelegramInteractionInterface;
 impl TelegramInteractionInterface {
-    pub async fn start(telegram_token: String) {
+    pub async fn start(telegram_token: String, scheduler: Arc<dyn ReminderScheduler>, reminder_storage: Arc<dyn ReminderStorage>) {
         let bot = Bot::new(telegram_token);
         log::info!("Starting Telegram interaction interface");
 
@@ -36,9 +37,6 @@ impl TelegramInteractionInterface {
         let invalid_state_handler =
             Update::filter_message().branch(dptree::endpoint(invalid_state));
 
-        // let manager = ReminderManager::create(worker_factory);
-        // let manager: Arc<dyn ReminderManagerTrait> = Arc::new(manager);
-
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(cancel_handler)
             .branch(create_daily_reminder::schema())
@@ -47,9 +45,9 @@ impl TelegramInteractionInterface {
 
         Dispatcher::builder(bot, schema)
             .dependencies(dptree::deps![
-                InMemStorage::<GlobalState>::new()
-                // reminder_storage,
-                // manager
+                InMemStorage::<GlobalState>::new(),
+                scheduler,
+                reminder_storage
             ])
             .enable_ctrlc_handler()
             .build()

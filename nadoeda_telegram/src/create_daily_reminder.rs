@@ -1,11 +1,14 @@
+use std::sync::Arc;
+
 use chrono::NaiveTime;
 use dptree::case;
+use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest};
 use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, types::Message};
 
-use nadoeda_models::reminder::ReminderFireTime;
+use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
 use nadoeda_storage::NewReminder;
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
@@ -121,6 +124,7 @@ async fn confirm_reminder(
     dialogue: GlobalDialogue,
     (text, firing_time): (String, NaiveTime),
     query: CallbackQuery,
+    scheduler: Arc<dyn ReminderScheduler>,
 ) -> HandlerResult {
     let reminder = NewReminder {
         text,
@@ -128,16 +132,25 @@ async fn confirm_reminder(
     };
 
     // let reminder_id = storage.insert(reminder).await?;
+    let reminder_id = 1;
     bot.answer_callback_query(query.id).await?;
 
-    // log::info!("Created reminder with id {}", reminder_id);
+    log::info!("Created reminder with id {}", reminder_id);
 
+    let reminder = Reminder {
+        id: reminder_id,
+        text: "Rroro".to_string(),
+        state: ReminderState::Pending,
+        fire_at: ReminderFireTime::new(NaiveTime::from_hms_opt(12, 0, 0).unwrap()),
+    };
     // let reminder = storage
     //     .get(reminder_id)
     //     .await
     //     .expect("Reminder was just created.");
 
-    // manager.schedule_reminder(reminder).await?;
+    scheduler
+        .schedule_reminder(ScheduleRequest::new(reminder))
+        .await;
 
     bot.send_message(dialogue.chat_id(), "Reminder saved and scheduled.")
         .await?;
@@ -179,9 +192,10 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
+    use async_trait::async_trait;
+    use nadoeda_scheduler::ScheduledReminder;
     use nadoeda_storage::{InMemoryReminderStorage, ReminderStorage};
+    use std::sync::Arc;
     use teloxide::{
         dispatching::dialogue::{self, InMemStorage},
         dptree::deps,
@@ -190,15 +204,49 @@ mod tests {
 
     use super::*;
 
+    struct NoopReminderScheduler;
+    #[async_trait]
+    impl ReminderScheduler for NoopReminderScheduler {
+        async fn schedule_reminder(
+            &self,
+            schedule_request: ScheduleRequest,
+        ) -> anyhow::Result<ScheduledReminder> {
+            Ok(ScheduledReminder::new(1))
+        }
+
+        async fn cancel_reminder(
+            &self,
+            scheduled_reminder: &ScheduledReminder,
+        ) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn acknowledge_reminder(
+            &self,
+            scheduled_reminder: &ScheduledReminder,
+        ) -> anyhow::Result<()> {
+            Ok(())
+        }
+
+        async fn confirm_reminder(
+            &self,
+            scheduled_reminder: &ScheduledReminder,
+        ) -> anyhow::Result<()> {
+            Ok(())
+        }
+    }
+
     #[tokio::test]
     async fn test() {
         let reminder_storage: Arc<dyn ReminderStorage> = Arc::new(InMemoryReminderStorage::new());
+        let scheduler: Arc<dyn ReminderScheduler> = Arc::new(NoopReminderScheduler);
         let schema =
             dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>().branch(schema());
         let mut bot = MockBot::new(MockMessageText::new().text("New Reminder"), schema);
 
         bot.dependencies(deps![
             reminder_storage,
+            scheduler,
             InMemStorage::<GlobalState>::new(),
             GlobalState::Idle
         ]);
