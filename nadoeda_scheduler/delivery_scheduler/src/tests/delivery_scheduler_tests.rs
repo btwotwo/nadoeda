@@ -2,7 +2,6 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use crate::ReminderMessageType;
-use crate::scheduler::ScheduleRequest;
 use async_trait::async_trait;
 use chrono::{NaiveTime, Utc};
 use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};

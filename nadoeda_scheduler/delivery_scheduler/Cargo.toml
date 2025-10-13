@@ -1,0 +1,21 @@
+[package]
+name = "nadoeda_delivery_scheduler"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+async-trait = "0.1.89"
+tokio = { version = "1", features = ["full", "test-util"] }
+chrono =  {version = "0.4.41", features = ["arbitrary"] }
+chrono-tz = "0.10.3"
+log = "0.4"
+tokio-util = "0.7.15"
+nadoeda_models = { version = "0.1.0", path = "../../nadoeda_models" }
+nadoeda_scheduler = { version = "0.1.0", path = ".." }
+
+[dev-dependencies]
+proptest  = "1"
+proptest-arbitrary-interop = "0.1.0"
+test-strategy = "0.4.3"
+

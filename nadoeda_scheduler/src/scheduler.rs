@@ -4,7 +4,7 @@ use nadoeda_models::reminder::{Reminder, ReminderId};
 
 
 pub struct ScheduleRequest {
-    pub(crate) reminder: Reminder,
+    pub reminder: Reminder,
 }
 
 impl ScheduleRequest {
@@ -16,7 +16,7 @@ impl ScheduleRequest {
 }
 
 pub struct ScheduledReminder {
-    pub(crate) id: ReminderId,
+    pub id: ReminderId,
 }
 
 impl ScheduledReminder {

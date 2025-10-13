@@ -8,16 +8,14 @@ use std::{
 
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
+use delivery::{ReminderDeliveryChannel, ReminderMessageType};
+use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest, ScheduledReminder};
 use tokio::{
     sync::{mpsc, RwLock},
     task::{self, JoinHandle},
 };
 
 use nadoeda_models::reminder::{Reminder, ReminderId, ReminderState};
-
-use crate::{ReminderDeliveryChannel, ReminderMessageType, scheduler::ScheduleRequest};
-
-use super::ReminderScheduler;
 
 const NAGGING_ATTEMPTS: u8 = 10;
 const NAGGING_TIMEOUT: Duration = Duration::from_secs(30);
@@ -49,9 +47,10 @@ impl ReminderScheduler for DeliveryReminderScheduler {
     async fn schedule_reminder(
         &self,
         schedule_request: ScheduleRequest,
-    ) -> anyhow::Result<super::ScheduledReminder> {
+    ) -> anyhow::Result<ScheduledReminder> {
         let reminder_id = schedule_request.reminder.id;
         if let Entry::Vacant(e) = self.tasks.write().await.entry(reminder_id) {
+            log::info!("Starting task for reminder {reminder_id}");
             let (tx, rx) = mpsc::channel(10);
             let tx_clone = tx.clone();
             let delivery_channel = self.delivery_channel.clone();
@@ -67,7 +66,7 @@ impl ReminderScheduler for DeliveryReminderScheduler {
             });
             let scheduled_reminder = ScheduledReminderHandle { task, tx };
             e.insert(scheduled_reminder);
-            Ok(super::ScheduledReminder { id: reminder_id })
+            Ok(ScheduledReminder { id: reminder_id })
         } else {
             anyhow::bail!("Already scheduled")
         }
@@ -75,7 +74,7 @@ impl ReminderScheduler for DeliveryReminderScheduler {
 
     async fn cancel_reminder(
         &self,
-        scheduled_reminder: &super::ScheduledReminder,
+        scheduled_reminder: &ScheduledReminder,
     ) -> anyhow::Result<()> {
         if let Some((_, scheduled_reminder)) = self.tasks.write().await.remove_entry(&scheduled_reminder.id) {
             scheduled_reminder
@@ -91,7 +90,7 @@ impl ReminderScheduler for DeliveryReminderScheduler {
 
     async fn acknowledge_reminder(
         &self,
-        scheduled_reminder: &super::ScheduledReminder,
+        scheduled_reminder: &ScheduledReminder,
     ) -> anyhow::Result<()> {
         if let Some(task) = self.tasks.read().await.get(&scheduled_reminder.id) {
             task.tx.send(ReminderEvent::Acknowledge).await?;
@@ -101,7 +100,7 @@ impl ReminderScheduler for DeliveryReminderScheduler {
 
     async fn confirm_reminder(
         &self,
-        scheduled_reminder: &super::ScheduledReminder,
+        scheduled_reminder: &ScheduledReminder,
     ) -> anyhow::Result<()> {
         if let Some(task) = self.tasks.read().await.get(&scheduled_reminder.id) {
             task.tx.send(ReminderEvent::Confirm).await?;
@@ -137,6 +136,7 @@ async fn handle_event(
     // println!("({current_state:?}, {event:?})");
     match (current_state, event) {
         (ReminderState::Pending, ReminderEvent::Schedule) => {
+            let id = reminder.id;
             let delay = get_target_delay(&reminder.fire_at.time(), Utc::now())
                 .to_std()
                 .unwrap();
@@ -146,6 +146,8 @@ async fn handle_event(
                 .await;
 
             task::spawn(async move {
+                log::info!("[SCHEDULE] Sleeping for {:?} delay. ReminderId {}", delay, id);
+
                 tokio::time::sleep(delay).await;
                 let _ = tx.send(ReminderEvent::Trigger).await;
             });
@@ -153,10 +155,14 @@ async fn handle_event(
             ReminderState::Scheduled
         }
         (ReminderState::Scheduled, ReminderEvent::Trigger) => {
+            let id = reminder.id;
+
             delivery
                 .send_reminder_notification(reminder, ReminderMessageType::Fired)
                 .await;
             task::spawn(async move {
+                log::info!("[NAGGING] Sleeping for {:?} delay. ReminderId {}", NAGGING_TIMEOUT, id);
+
                 tokio::time::sleep(NAGGING_TIMEOUT).await;
                 let _ = tx.send(ReminderEvent::Trigger).await;
             });
@@ -176,8 +182,11 @@ async fn handle_event(
             delivery
                 .send_reminder_notification(reminder, ReminderMessageType::Nag)
                 .await;
-
+            let id = reminder.id;
+            
             task::spawn(async move {
+                log::info!("[NAGGING REPEAT] Sleeping for {:?} delay. ReminderId {}", NAGGING_TIMEOUT, id);
+
                 tokio::time::sleep(NAGGING_TIMEOUT).await;
                 let _ = tx.send(ReminderEvent::Trigger).await;
             });
@@ -190,8 +199,10 @@ async fn handle_event(
             delivery
                 .send_reminder_notification(reminder, ReminderMessageType::Acknowledge)
                 .await;
-
+            let id = reminder.id;
             task::spawn(async move {
+                log::info!("[CONFIRMATION] Sleeping for {:?} delay. ReminderId {}", CONFIRMATION_TIMEOUT, id);
+
                 tokio::time::sleep(CONFIRMATION_TIMEOUT).await;
                 let _ = tx.send(ReminderEvent::Trigger).await;
             });
@@ -211,8 +222,10 @@ async fn handle_event(
             delivery
                 .send_reminder_notification(reminder, ReminderMessageType::Confirmation)
                 .await;
-
+            let id = reminder.id;
             task::spawn(async move {
+                log::info!("[CONFIRMATION REPEAT] Sleeping for {:?} delay. ReminderId {}", CONFIRMATION_TIMEOUT, id);
+                
                 tokio::time::sleep(CONFIRMATION_TIMEOUT).await;
                 let _ = tx.send(ReminderEvent::Trigger).await;
             });
