@@ -102,7 +102,7 @@ impl ReminderScheduler for DeliveryReminderScheduler {
             let scheduled_reminder_handle = self
                 .create_reminder_task(schedule_request.reminder)
                 .unwrap();
-            
+
             e.insert(scheduled_reminder_handle);
 
             Ok(ScheduledReminder { id: reminder_id })

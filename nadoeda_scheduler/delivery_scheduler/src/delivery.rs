@@ -1,5 +1,3 @@
-
-
 use async_trait::async_trait;
 use nadoeda_models::reminder::Reminder;
 
@@ -16,6 +14,6 @@ pub enum ReminderMessageType {
 }
 
 #[async_trait]
-pub trait ReminderDeliveryChannel: Send + Sync  {
+pub trait ReminderDeliveryChannel: Send + Sync {
     async fn send_reminder_notification(&self, reminder: &Reminder, message: ReminderMessageType);
 }
