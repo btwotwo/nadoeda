@@ -11,7 +11,7 @@ use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
 use delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest, ScheduledReminder};
 use tokio::{
-    sync::{RwLock, mpsc},
+    sync::{RwLock, mpsc, oneshot, watch},
     task::{self, JoinHandle},
     time::interval,
 };
@@ -24,27 +24,49 @@ const NAGGING_TIMEOUT: Duration = Duration::from_secs(30);
 const CONFIRMATION_ATTEMPTS: u8 = 10;
 const CONFIRMATION_TIMEOUT: Duration = Duration::from_secs(120);
 
+#[derive(Debug)]
+enum ReminderEvent {
+    Schedule,
+    Trigger,
+    Acknowledge,
+    Confirm,
+    Stop,
+}
+
 struct ScheduledReminderHandle {
     task: JoinHandle<()>,
     tx: mpsc::Sender<ReminderEvent>,
 }
+
+
+struct CleanupTask(watch::Sender<()>);
 
 type ReminderTaskStore = RwLock<HashMap<ReminderId, ScheduledReminderHandle>>;
 
 pub struct DeliveryReminderScheduler {
     tasks: Arc<ReminderTaskStore>,
     delivery_channel: Arc<dyn ReminderDeliveryChannel>,
+    cleanup_task: CleanupTask,
 }
 
 impl DeliveryReminderScheduler {
     pub fn new(delivery_channel: Arc<dyn ReminderDeliveryChannel>) -> Self {
+        let tasks = Arc::new(RwLock::new(HashMap::new()));
+        let cleanup_task = Self::spawn_cleanup_task(Arc::clone(&tasks));
+        
         let scheduler = Self {
-            tasks: Arc::new(RwLock::new(HashMap::new())),
+            tasks,
             delivery_channel,
+            cleanup_task,
         };
 
-        scheduler.spawn_cleanup_task();
         scheduler
+    }
+}
+
+impl Drop for DeliveryReminderScheduler {
+    fn drop(&mut self) {
+        let _ = self.cleanup_task.0.send(());
     }
 }
 
@@ -66,17 +88,23 @@ impl DeliveryReminderScheduler {
         Ok(scheduled_reminder)
     }
 
-    fn spawn_cleanup_task(&self) {
-        task::spawn({
-            let tasks = self.tasks.clone();
-            async move {
-                let mut interval = interval(Duration::from_secs(300));
-                loop {
-                    interval.tick().await;
-                    Self::clean_finished_tasks(&tasks).await;
-                }
+    fn spawn_cleanup_task(tasks: Arc<ReminderTaskStore>) -> CleanupTask {
+        let (shutdown_tx, mut shutdown_rx) = watch::channel(());
+        task::spawn(async move {
+            loop {
+                tokio::select! {
+                    _ = tokio::time::sleep(Duration::from_secs(300)) => {
+                        Self::clean_finished_tasks(&tasks).await;
+                    }
+                    _ = shutdown_rx.changed() => {
+                        log::info!("Cleanup task shutting down");
+                        break;
+                    }
+                };
             }
         });
+
+        CleanupTask(shutdown_tx)
     }
 
     async fn clean_finished_tasks(tasks: &ReminderTaskStore) {
@@ -180,16 +208,13 @@ async fn handle_event(
                 .send_reminder_notification(reminder, ReminderMessageType::Scheduled)
                 .await;
 
-            task::spawn(async move {
-                log::info!(
-                    "[SCHEDULE] Sleeping for {:?} delay. ReminderId {}",
-                    delay,
-                    id
-                );
+            log::info!(
+                "[SCHEDULE] Sleeping for {:?} delay. ReminderId {}",
+                delay,
+                id
+            );
 
-                tokio::time::sleep(delay).await;
-                let _ = tx.send(ReminderEvent::Trigger).await;
-            });
+            send_after_delay(ReminderEvent::Trigger, tx, delay);
 
             ReminderState::Scheduled
         }
@@ -197,16 +222,14 @@ async fn handle_event(
             delivery
                 .send_reminder_notification(reminder, ReminderMessageType::Fired)
                 .await;
-            task::spawn(async move {
-                log::info!(
-                    "[NAGGING] Sleeping for {:?} delay. ReminderId {}",
-                    NAGGING_TIMEOUT,
-                    id
-                );
 
-                tokio::time::sleep(NAGGING_TIMEOUT).await;
-                let _ = tx.send(ReminderEvent::Trigger).await;
-            });
+            log::info!(
+                "[NAGGING] Sleeping for {:?} delay. ReminderId {}",
+                NAGGING_TIMEOUT,
+                id
+            );
+
+            send_after_delay(ReminderEvent::Trigger, tx, NAGGING_TIMEOUT);
 
             ReminderState::Nagging {
                 attempts_left: NAGGING_ATTEMPTS,
@@ -224,16 +247,13 @@ async fn handle_event(
                 .send_reminder_notification(reminder, ReminderMessageType::Nag)
                 .await;
 
-            task::spawn(async move {
-                log::info!(
-                    "[NAGGING REPEAT] Sleeping for {:?} delay. ReminderId {}",
-                    NAGGING_TIMEOUT,
-                    id
-                );
+            log::info!(
+                "[NAGGING REPEAT] Sleeping for {:?} delay. ReminderId {}",
+                NAGGING_TIMEOUT,
+                id
+            );
 
-                tokio::time::sleep(NAGGING_TIMEOUT).await;
-                let _ = tx.send(ReminderEvent::Trigger).await;
-            });
+            send_after_delay(ReminderEvent::Trigger, tx, NAGGING_TIMEOUT);
 
             ReminderState::Nagging {
                 attempts_left: attempts_left - 1,
@@ -244,16 +264,13 @@ async fn handle_event(
                 .send_reminder_notification(reminder, ReminderMessageType::Acknowledge)
                 .await;
 
-            task::spawn(async move {
-                log::info!(
-                    "[CONFIRMATION] Sleeping for {:?} delay. ReminderId {}",
-                    CONFIRMATION_TIMEOUT,
-                    id
-                );
+            log::info!(
+                "[CONFIRMATION] Sleeping for {:?} delay. ReminderId {}",
+                CONFIRMATION_TIMEOUT,
+                id
+            );
 
-                tokio::time::sleep(CONFIRMATION_TIMEOUT).await;
-                let _ = tx.send(ReminderEvent::Trigger).await;
-            });
+            send_after_delay(ReminderEvent::Trigger, tx, CONFIRMATION_TIMEOUT);
 
             ReminderState::Confirming {
                 attempts_left: CONFIRMATION_ATTEMPTS,
@@ -271,16 +288,13 @@ async fn handle_event(
                 .send_reminder_notification(reminder, ReminderMessageType::Confirmation)
                 .await;
 
-            task::spawn(async move {
-                log::info!(
-                    "[CONFIRMATION REPEAT] Sleeping for {:?} delay. ReminderId {}",
-                    CONFIRMATION_TIMEOUT,
-                    id
-                );
+            log::info!(
+                "[CONFIRMATION REPEAT] Sleeping for {:?} delay. ReminderId {}",
+                CONFIRMATION_TIMEOUT,
+                id
+            );
 
-                tokio::time::sleep(CONFIRMATION_TIMEOUT).await;
-                let _ = tx.send(ReminderEvent::Trigger).await;
-            });
+            send_after_delay(ReminderEvent::Trigger, tx, CONFIRMATION_TIMEOUT);
 
             ReminderState::Confirming {
                 attempts_left: attempts_left - 1,
@@ -311,13 +325,11 @@ async fn handle_event(
     }
 }
 
-#[derive(Debug)]
-enum ReminderEvent {
-    Schedule,
-    Trigger,
-    Acknowledge,
-    Confirm,
-    Stop,
+fn send_after_delay(ev: ReminderEvent, tx: mpsc::Sender<ReminderEvent>, delay: Duration) {
+    task::spawn(async move {
+        tokio::time::sleep(delay).await;
+        let _ = tx.send(ev).await;
+    });
 }
 
 pub(crate) fn get_target_delay(fire_at: &NaiveTime, now: DateTime<Utc>) -> chrono::Duration {
