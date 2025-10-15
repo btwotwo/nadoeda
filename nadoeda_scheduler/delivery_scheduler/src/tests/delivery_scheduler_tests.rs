@@ -179,7 +179,7 @@ async fn nagging_timeout_proptest(#[strategy(time_strategy())] time: NaiveTime) 
 
     ctx.scheduler.schedule_reminder(req).await.unwrap();
 
-    wait(expected_delay * 999).await; // Very long time
+    wait(expected_delay * 20).await; // Very long time
 
     let msgs = ctx.received_messages.lock().unwrap();
 
