@@ -11,7 +11,7 @@ use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
 use delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest, ScheduledReminder};
 use tokio::{
-    sync::{RwLock, mpsc, oneshot},
+    sync::{RwLock, mpsc},
     task::{self, JoinHandle},
     time::interval,
 };

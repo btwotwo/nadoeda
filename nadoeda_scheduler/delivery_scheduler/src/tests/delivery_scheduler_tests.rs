@@ -61,7 +61,7 @@ fn tokio_ct(
 
 #[proptest(async = tokio_ct)]
 async fn scheduling_proptest(#[strategy(time_strategy())] time: NaiveTime) {
-    let mut ctx = TestContext::new();
+    let ctx = TestContext::new();
     let req = schedule_request(time);
     let expected_delay = expected_delay(&req.reminder);
 
@@ -78,7 +78,7 @@ async fn scheduling_proptest(#[strategy(time_strategy())] time: NaiveTime) {
 
 #[proptest(async = tokio_ct)]
 async fn stopping_proptest(#[strategy(time_strategy())] time: NaiveTime) {
-    let mut ctx = TestContext::new();
+    let ctx = TestContext::new();
     let req = schedule_request(time);
     let expected_delay = expected_delay(&req.reminder);
 
@@ -97,7 +97,7 @@ async fn stopping_proptest(#[strategy(time_strategy())] time: NaiveTime) {
 
 #[proptest(async = tokio_ct)]
 async fn nagging_proptest(#[strategy(time_strategy())] time: NaiveTime) {
-    let mut ctx = TestContext::new();
+    let ctx = TestContext::new();
     let req = schedule_request(time);
     let expected_delay = expected_delay(&req.reminder);
 
@@ -115,7 +115,7 @@ async fn nagging_proptest(#[strategy(time_strategy())] time: NaiveTime) {
 
 #[proptest(async = tokio_ct)]
 async fn confirmation_proptest(#[strategy(time_strategy())] time: NaiveTime) {
-    let mut ctx = TestContext::new();
+    let ctx = TestContext::new();
     let req = schedule_request(time);
     let expected_delay = expected_delay(&req.reminder);
 
@@ -140,7 +140,7 @@ async fn confirmation_proptest(#[strategy(time_strategy())] time: NaiveTime) {
 
 #[proptest(async = tokio_ct)]
 async fn finish_proptest(#[strategy(time_strategy())] time: NaiveTime) {
-    let mut ctx = TestContext::new();
+    let ctx = TestContext::new();
     let req = schedule_request(time);
     let expected_delay = expected_delay(&req.reminder);
 
@@ -173,7 +173,7 @@ async fn finish_proptest(#[strategy(time_strategy())] time: NaiveTime) {
 
 #[proptest(async = tokio_ct)]
 async fn nagging_timeout_proptest(#[strategy(time_strategy())] time: NaiveTime) {
-    let mut ctx = TestContext::new();
+    let ctx = TestContext::new();
     let req = schedule_request(time);
     let expected_delay = expected_delay(&req.reminder);
 
@@ -194,7 +194,7 @@ async fn nagging_timeout_proptest(#[strategy(time_strategy())] time: NaiveTime) 
 
 #[proptest(async = tokio_ct)]
 async fn confirmation_timeout_proptest(#[strategy(time_strategy())] time: NaiveTime) {
-    let mut ctx = TestContext::new();
+    let ctx = TestContext::new();
     let req = schedule_request(time);
     let expected_delay = expected_delay(&req.reminder);
 
