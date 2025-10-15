@@ -2,7 +2,8 @@ mod appsettings;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use nadoeda_delivery_scheduler::{delivery::{ReminderDeliveryChannel, ReminderMessageType}, DeliveryReminderScheduler};
+use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
+use nadoeda_delivery_scheduler::DeliveryReminderScheduler;
 use nadoeda_models::reminder::Reminder;
 use nadoeda_storage::{InMemoryReminderStorage, ReminderStorage};
 use nadoeda_telegram::{TelegramInteractionInterface, teloxide};
