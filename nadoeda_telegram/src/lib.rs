@@ -25,7 +25,11 @@ enum GlobalState {
 
 pub struct TelegramInteractionInterface;
 impl TelegramInteractionInterface {
-    pub async fn start(bot: teloxide::Bot, scheduler: Arc<dyn ReminderScheduler>, reminder_storage: Arc<dyn ReminderStorage>) {
+    pub async fn start(
+        bot: teloxide::Bot,
+        scheduler: Arc<dyn ReminderScheduler>,
+        reminder_storage: Arc<dyn ReminderStorage>,
+    ) {
         log::info!("Starting Telegram interaction interface");
 
         let cancel_handler = Update::filter_message().branch(
@@ -36,11 +40,15 @@ impl TelegramInteractionInterface {
         let invalid_state_handler =
             Update::filter_message().branch(dptree::endpoint(invalid_state));
 
+        let invalid_callback_handler =
+            Update::filter_callback_query().branch(dptree::endpoint(invalid_query));
+
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(cancel_handler)
             .branch(create_daily_reminder::schema())
             .branch(edit_reminders::schema())
-            .branch(invalid_state_handler);
+            .branch(invalid_state_handler)
+            .branch(invalid_callback_handler);
 
         Dispatcher::builder(bot, schema)
             .dependencies(dptree::deps![
@@ -61,12 +69,23 @@ async fn cancel(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResu
     dialogue.exit().await?;
     Ok(())
 }
+
 async fn invalid_state(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResult {
     bot.send_message(
         msg.chat.id,
         "Unable to handle the message. Please try again or use /cancel to stop current operation.",
     )
     .await?;
+    Ok(())
+}
+
+async fn invalid_query(bot: Bot, dialogue: GlobalDialogue, query: CallbackQuery) -> HandlerResult {
+    bot.answer_callback_query(query.id).await?;
+    bot.send_message(
+        dialogue.chat_id(),
+        "Unable to handle the query result. Please try again or use /cancel to stop current operation.",
+    ).await?;
+
     Ok(())
 }
 

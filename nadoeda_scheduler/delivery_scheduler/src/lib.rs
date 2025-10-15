@@ -1,5 +1,3 @@
-pub mod delivery;
-
 use std::{
     collections::{HashMap, hash_map::Entry},
     sync::Arc,
@@ -8,7 +6,7 @@ use std::{
 
 use async_trait::async_trait;
 use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
-use delivery::{ReminderDeliveryChannel, ReminderMessageType};
+use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest, ScheduledReminder};
 use tokio::{
     sync::{RwLock, mpsc, oneshot, watch},
