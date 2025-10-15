@@ -24,6 +24,7 @@ async fn main() {
     let scheduler = Arc::new(DeliveryReminderScheduler::new(Arc::new(
         PrinterDeliveryChannel,
     )));
+    
     let bot = teloxide::Bot::new(appsettings::get().telegram.token.clone());
 
     let interface_task = tokio::spawn({
