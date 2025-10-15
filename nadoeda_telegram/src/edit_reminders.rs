@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use dptree::case;
+use nadoeda_storage::ReminderStorage;
 use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
 use teloxide::types::ParseMode;
@@ -7,7 +10,7 @@ use teloxide::utils::markdown;
 use nadoeda_models::reminder::Reminder;
 
 use super::{
-    GlobalCommand, GlobalDialogue, GlobalState, HandlerReminderStorageType, HandlerResult,
+    GlobalCommand, GlobalDialogue, GlobalState, HandlerResult,
 };
 
 #[derive(Clone, Default)]
@@ -17,7 +20,7 @@ pub(super) enum EditRemindersState {
 }
 
 async fn list_reminders(
-    storage: HandlerReminderStorageType,
+    storage: Arc<dyn ReminderStorage>,
     bot: Bot,
     dialogue: GlobalDialogue,
     msg: Message,

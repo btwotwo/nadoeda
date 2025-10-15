@@ -9,7 +9,7 @@ use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, types::Message};
 
 use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
-use nadoeda_storage::NewReminder;
+use nadoeda_storage::{NewReminder, ReminderStorage};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
@@ -119,7 +119,7 @@ If you want to change something, please type /cancel and start over",
 }
 
 async fn confirm_reminder(
-    // storage: HandlerReminderStorageType,
+    storage: Arc<dyn ReminderStorage>,
     bot: Bot,
     dialogue: GlobalDialogue,
     (text, firing_time): (String, NaiveTime),
@@ -131,22 +131,15 @@ async fn confirm_reminder(
         fire_at: ReminderFireTime::new(firing_time),
     };
 
-    // let reminder_id = storage.insert(reminder).await?;
-    let reminder_id = 1;
+    let reminder_id = storage.insert(reminder).await?;
     bot.answer_callback_query(query.id).await?;
 
     log::info!("Created reminder with id {}", reminder_id);
 
-    let reminder = Reminder {
-        id: reminder_id,
-        text: "Rroro".to_string(),
-        state: ReminderState::Pending,
-        fire_at: ReminderFireTime::new(firing_time),
-    };
-    // let reminder = storage
-    //     .get(reminder_id)
-    //     .await
-    //     .expect("Reminder was just created.");
+    let reminder = storage
+        .get(reminder_id)
+        .await
+        .expect("Reminder was just created.");
 
     scheduler
         .schedule_reminder(ScheduleRequest::new(reminder))

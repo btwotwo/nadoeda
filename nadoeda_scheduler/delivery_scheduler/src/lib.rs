@@ -9,9 +9,8 @@ use chrono::{DateTime, NaiveTime, TimeDelta, Utc};
 use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest, ScheduledReminder};
 use tokio::{
-    sync::{RwLock, mpsc, oneshot, watch},
+    sync::{RwLock, mpsc, watch},
     task::{self, JoinHandle},
-    time::interval,
 };
 
 use nadoeda_models::reminder::{Reminder, ReminderId, ReminderState};
@@ -52,13 +51,13 @@ impl DeliveryReminderScheduler {
         let tasks = Arc::new(RwLock::new(HashMap::new()));
         let cleanup_task = Self::spawn_cleanup_task(Arc::clone(&tasks));
         
-        let scheduler = Self {
+        
+
+        Self {
             tasks,
             delivery_channel,
             cleanup_task,
-        };
-
-        scheduler
+        }
     }
 }
 
