@@ -23,6 +23,7 @@ enum GlobalState {
 }
 
 pub struct TelegramInteractionInterface;
+
 impl TelegramInteractionInterface {
     pub async fn start(
         bot: teloxide::Bot,
