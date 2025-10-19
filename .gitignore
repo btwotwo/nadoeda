@@ -1,3 +1,4 @@
 /target
 .direnv
 /appsettings.local.toml
+*.db*
