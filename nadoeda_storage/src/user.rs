@@ -78,7 +78,6 @@ mod sqlite_user_storage {
             Ok(user.map(Into::into))
         }
         async fn get_by_tg_chat(&self, chat_id: i64) -> Result<Option<User>, Self::Error> {
-            let chat_id = Some(chat_id);
             let user = sqlx::query_as!(UserStorageModel,
                 "SELECT * FROM users WHERE tg_chat_id = ?",
                 chat_id
@@ -87,7 +86,17 @@ mod sqlite_user_storage {
             Ok(user.map(Into::into))
         }
         async fn create(&self, new_user: NewUser) -> Result<UserId, Self::Error> {
-            todo!()
+            let NewUser {tg_chat_id, timezone} = new_user;
+            let timezone = timezone.to_string();
+            let user_id = sqlx::query_scalar!(
+                "INSERT INTO users (tg_chat_id, timezone)
+                 VALUES (?, ?)
+                 RETURNING id",
+                tg_chat_id,
+                timezone
+            ).fetch_one(&self.pool).await?;
+
+            Ok(user_id)
         }
         async fn update(&self, update_user: UpdateUser) -> Result<UserId, Self::Error> {
             todo!()
