@@ -55,7 +55,7 @@
             # Required by rust-analyzer
             RUST_SRC_PATH = "${pkgs.rustToolchain}/lib/rustlib/src/rust/library";
             RUST_LOG = "trace";
-            DATABASE_URL = "sqlite://nadoeda.db";
+            DATABASE_URL = "sqlite:///tmp/nadoeda.db";
           };
         };
       });
