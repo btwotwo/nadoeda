@@ -18,17 +18,16 @@ pub struct UpdateUser {
 pub trait UserInfoStorage {
     type Error: Send + Sync + 'static;
 
-    async fn get(id: UserId) -> Result<Option<User>, Self::Error>;
-    async fn get_by_tg_chat(chat_id: i64) -> Result<Option<User>, Self::Error>;
-    async fn create(new_user: NewUser) -> Result<UserId, Self::Error>;
-    async fn update(update_user: UpdateUser) -> Result<UserId, Self::Error>;
-    async fn delete(id: UserId) -> Result<(), Self::Error>;
+    async fn get(&self, id: UserId) -> Result<Option<User>, Self::Error>;
+    async fn get_by_tg_chat(&self, chat_id: i64) -> Result<Option<User>, Self::Error>;
+    async fn create(&self, new_user: NewUser) -> Result<UserId, Self::Error>;
+    async fn update(&self, update_user: UpdateUser) -> Result<UserId, Self::Error>;
+    async fn delete(&self, id: UserId) -> Result<(), Self::Error>;
 }
 
 mod sqlite_storage {
     use async_trait::async_trait;
-    use nadoeda_models::{chrono_tz, user::{User, UserId}};
-    use sqlx::types::chrono;
+    use nadoeda_models::{chrono_tz::{self, Tz}, user::{User, UserId}};
 
     use super::{NewUser, UpdateUser, UserInfoStorage};
 
@@ -49,15 +48,13 @@ mod sqlite_storage {
         }
     }
 
-    impl TryFrom<UserStorageModel> for User {
-        type Error = anyhow::Error;
-
-        fn try_from(value: UserStorageModel) -> Result<Self, Self::Error> {
-            Ok(Self {
+    impl From<UserStorageModel> for User {
+        fn from(value: UserStorageModel) -> Self {
+            Self {
                 id: value.id,
                 tg_chat_id: value.tg_chat_id,
-                timezone: value.timezone.parse()?
-            })
+                timezone: value.timezone.parse().unwrap_or_default()
+            }
         }
     }
 
@@ -75,21 +72,21 @@ mod sqlite_storage {
     impl UserInfoStorage for SqliteUserInfoStorage {
         type Error = anyhow::Error;
 
-        async fn get(id: UserId) -> Result<Option<User>, Self::Error> {
-            let user = sqlx::query_as!(UserStorageModel, "SELECT * FROM users;");
+        async fn get(&self, id: UserId) -> Result<Option<User>, Self::Error> {
+            let user = sqlx::query_as!(UserStorageModel, "SELECT * FROM users WHERE id = ?;", id).fetch_optional(&self.pool).await?;
 
+            Ok(user.map(Into::into))
+        }
+        async fn get_by_tg_chat(&self, chat_id: i64) -> Result<Option<User>, Self::Error> {
             todo!()
         }
-        async fn get_by_tg_chat(chat_id: i64) -> Result<Option<User>, Self::Error> {
+        async fn create(&self, new_user: NewUser) -> Result<UserId, Self::Error> {
             todo!()
         }
-        async fn create(new_user: NewUser) -> Result<UserId, Self::Error> {
+        async fn update(&self, update_user: UpdateUser) -> Result<UserId, Self::Error> {
             todo!()
         }
-        async fn update(update_user: UpdateUser) -> Result<UserId, Self::Error> {
-            todo!()
-        }
-        async fn delete(id: UserId) -> Result<(), Self::Error> {
+        async fn delete(&self, id: UserId) -> Result<(), Self::Error> {
             todo!()
         }
     }
