@@ -25,7 +25,7 @@ pub trait UserInfoStorage {
     async fn delete(&self, id: UserId) -> Result<(), Self::Error>;
 }
 
-mod sqlite_storage {
+mod sqlite_user_storage {
     use async_trait::async_trait;
     use nadoeda_models::{chrono_tz::{self, Tz}, user::{User, UserId}};
 
@@ -35,7 +35,7 @@ mod sqlite_storage {
     pub struct UserStorageModel {
         pub id: i64,
         pub timezone: String,
-        pub tg_chat_id: i64,
+        pub tg_chat_id: Option<i64>,
     }
 
     impl From<User> for UserStorageModel {
@@ -78,7 +78,13 @@ mod sqlite_storage {
             Ok(user.map(Into::into))
         }
         async fn get_by_tg_chat(&self, chat_id: i64) -> Result<Option<User>, Self::Error> {
-            todo!()
+            let chat_id = Some(chat_id);
+            let user = sqlx::query_as!(UserStorageModel,
+                "SELECT * FROM users WHERE tg_chat_id = ?",
+                chat_id
+            ).fetch_optional(&self.pool).await?;
+
+            Ok(user.map(Into::into))
         }
         async fn create(&self, new_user: NewUser) -> Result<UserId, Self::Error> {
             todo!()

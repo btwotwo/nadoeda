@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM users WHERE id = ?;",
+  "query": "SELECT * FROM users WHERE tg_chat_id = ?",
   "describe": {
     "columns": [
       {
@@ -28,5 +28,5 @@
       true
     ]
   },
-  "hash": "607397c7276859ad8e4a1c4961a577966208572f1a68c4611cdf52cc069c27cc"
+  "hash": "0e64810b135e77ce55fdf04a0a4877e54a60252721e474c1780f188ae2bf0166"
 }
