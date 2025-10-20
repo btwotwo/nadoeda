@@ -2117,7 +2117,6 @@ dependencies = [
  "chrono",
  "chrono-tz",
  "serde",
- "sqlx",
 ]
 
 [[package]]
@@ -2137,6 +2136,7 @@ dependencies = [
  "async-trait",
  "log",
  "nadoeda_models",
+ "sqlx",
  "tokio",
 ]
 
