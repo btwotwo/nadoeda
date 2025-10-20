@@ -3,9 +3,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE users (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     timezone        TEXT NOT NULL,
-    tg_chat_id      INTEGER NOT NULL UNIQUE,
-    created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    tg_chat_id      INTEGER NOT NULL UNIQUE
 );
 
 CREATE TRIGGER users_updated_at
