@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM users;",
+  "query": "SELECT * FROM users WHERE id = ?;",
   "describe": {
     "columns": [
       {
@@ -20,7 +20,7 @@
       }
     ],
     "parameters": {
-      "Right": 0
+      "Right": 1
     },
     "nullable": [
       false,
@@ -28,5 +28,5 @@
       false
     ]
   },
-  "hash": "d1ec24bdafb79996d598fd0707064fc6766042c1054c8ca379da5fc6a3a03e5a"
+  "hash": "607397c7276859ad8e4a1c4961a577966208572f1a68c4611cdf52cc069c27cc"
 }
