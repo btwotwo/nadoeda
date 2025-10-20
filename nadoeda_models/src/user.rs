@@ -1,4 +1,4 @@
-pub type UserId = u64;
+pub type UserId = i64;
 
 pub struct User {
     pub id: UserId,
