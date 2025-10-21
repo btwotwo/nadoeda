@@ -4,7 +4,7 @@ use nadoeda_models::{
     user::UserId,
 };
 
-#[derive(sqlx::FromRow, sqlx::Type)]
+#[derive(sqlx::FromRow)]
 pub struct ReminderStorageModel {
     pub id: i64,
     pub user_id: i64,

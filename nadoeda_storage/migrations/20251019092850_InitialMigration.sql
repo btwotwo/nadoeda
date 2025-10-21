@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS reminders (
                             state_kind IN ('Pending', 'Scheduled', 'Nagging', 'Confirming')
                         ),
        attempts_left   INTEGER NULL,
-       fire_at         TEXT NOT NULL,  -- stored as HH:MM:SS
+       fire_at         TIME NOT NULL,  -- stored as HH:MM:SS
        text            TEXT NOT NULL,
     
         FOREIGN KEY (user_id)
