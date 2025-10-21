@@ -1,5 +1,7 @@
 use chrono::Timelike;
 
+use crate::user::UserId;
+
 #[derive(Debug, Copy, Clone)]
 pub enum ReminderState {
     Pending,
@@ -13,7 +15,7 @@ pub enum ReminderFiringPeriod {
     Daily,
 }
 
-pub type ReminderId = u64;
+pub type ReminderId = i64;
 
 #[derive(Debug, Clone)]
 pub struct ReminderFireTime(chrono::NaiveTime);
@@ -24,7 +26,11 @@ impl ReminderFireTime {
         Self(normalized_time)
     }
 
-    pub fn time(&self) -> chrono::NaiveTime {
+    pub fn time(&self) -> &chrono::NaiveTime {
+        &self.0
+    }
+
+    pub fn into_time(self) -> chrono::NaiveTime {
         self.0
     }
 }
@@ -35,4 +41,5 @@ pub struct Reminder {
     pub state: ReminderState,
     pub fire_at: ReminderFireTime,
     pub text: String,
+    pub user_id: UserId
 }

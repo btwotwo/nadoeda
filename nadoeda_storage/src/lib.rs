@@ -1,6 +1,7 @@
-mod model;
-mod reminder_storage;
+mod sqlite;
 mod user;
+mod reminder;
 
-pub use model::NewReminder;
-pub use reminder_storage::{InMemoryReminderStorage, ReminderStorage};
+
+pub use reminder::{ReminderStorage};
+
