@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "UPDATE users\n                 SET tg_chat_id = ?,\n                     timezone = ?\n                 WHERE id = ?\n                 RETURNING *",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "timezone",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "tg_chat_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "1b40d1c9dfd7a5f9b27fc82243e1f25e1de0963f654e4944f0c4fe0ce4db3380"
+}

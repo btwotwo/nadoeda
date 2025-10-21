@@ -1,0 +1,32 @@
+{
+  "db_name": "SQLite",
+  "query": "INSERT INTO users (tg_chat_id, timezone)\n                 VALUES (?, ?)\n                 RETURNING *",
+  "describe": {
+    "columns": [
+      {
+        "name": "id",
+        "ordinal": 0,
+        "type_info": "Integer"
+      },
+      {
+        "name": "timezone",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "tg_chat_id",
+        "ordinal": 2,
+        "type_info": "Integer"
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "db4cfa73b678df55d584c46c9b6a2c180b914b1686de0f3f624616524f9f87a6"
+}
