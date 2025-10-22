@@ -66,7 +66,7 @@ VALUES (?, ?, ?, ?, ?) RETURNING *",
     async fn update(&self, reminder: Reminder) -> Result<Reminder, Self::Error> {
         let ReminderStorageModel {
             id,
-            user_id,
+            user_id: _,
             state_kind,
             attempts_left,
             fire_at,
