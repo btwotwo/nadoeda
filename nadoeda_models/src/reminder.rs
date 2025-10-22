@@ -1,4 +1,4 @@
-use chrono::Timelike;
+use chrono::{NaiveTime, Timelike};
 
 use crate::user::UserId;
 
@@ -32,6 +32,15 @@ impl ReminderFireTime {
 
     pub fn into_time(self) -> chrono::NaiveTime {
         self.0
+    }
+
+    pub fn into_string(self) -> String {
+        self.0.format("%H:%M:%S").to_string()
+    }
+
+    pub fn from_string(input: &str) -> Option<Self> {
+        let naive_time = NaiveTime::parse_from_str(input, "%H:%M:%S");
+        naive_time.ok().map(Self::new)
     }
 }
 
