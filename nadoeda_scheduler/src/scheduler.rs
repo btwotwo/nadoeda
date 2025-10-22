@@ -2,16 +2,13 @@ use async_trait::async_trait;
 
 use nadoeda_models::reminder::{Reminder, ReminderId};
 
-
 pub struct ScheduleRequest {
     pub reminder: Reminder,
 }
 
 impl ScheduleRequest {
     pub fn new(reminder: Reminder) -> Self {
-        Self {
-            reminder
-        }
+        Self { reminder }
     }
 }
 
@@ -22,9 +19,7 @@ pub struct ScheduledReminder {
 impl ScheduledReminder {
     #[cfg(feature = "test-util")]
     pub fn new(id: ReminderId) -> Self {
-        Self {
-            id,
-        }
+        Self { id }
     }
 }
 
@@ -35,19 +30,12 @@ pub trait ReminderScheduler: Send + Sync + 'static {
         schedule_request: ScheduleRequest,
     ) -> anyhow::Result<ScheduledReminder>;
 
-    async fn cancel_reminder(
-        &self,
-        scheduled_reminder: &ScheduledReminder,
-    ) -> anyhow::Result<()>;
+    async fn cancel_reminder(&self, scheduled_reminder: &ScheduledReminder) -> anyhow::Result<()>;
 
     async fn acknowledge_reminder(
         &self,
         scheduled_reminder: &ScheduledReminder,
     ) -> anyhow::Result<()>;
 
-    async fn confirm_reminder(
-        &self,
-        scheduled_reminder: &ScheduledReminder,
-    ) -> anyhow::Result<()>;
-    
+    async fn confirm_reminder(&self, scheduled_reminder: &ScheduledReminder) -> anyhow::Result<()>;
 }

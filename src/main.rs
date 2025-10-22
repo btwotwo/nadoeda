@@ -3,9 +3,9 @@ mod appsettings;
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_delivery_scheduler::DeliveryReminderScheduler;
 use nadoeda_models::reminder::Reminder;
+use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_storage::{InMemoryReminderStorage, ReminderStorage};
 use nadoeda_telegram::{TelegramInteractionInterface, teloxide};
 
@@ -26,7 +26,7 @@ async fn main() {
     let scheduler = Arc::new(DeliveryReminderScheduler::new(Arc::new(
         PrinterDeliveryChannel,
     )));
-    
+
     let bot = teloxide::Bot::new(appsettings::get().telegram.token.clone());
 
     let interface_task = tokio::spawn({

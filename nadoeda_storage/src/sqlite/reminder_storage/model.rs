@@ -45,7 +45,9 @@ pub fn convert_state(state: ReminderState) -> (String, Option<i64>) {
     match state {
         ReminderState::Pending => ("Pending".to_string(), None),
         ReminderState::Scheduled => ("Scheduled".to_string(), None),
-        ReminderState::Nagging { attempts_left } => ("Nagging".to_string(), Some(attempts_left as i64)),
+        ReminderState::Nagging { attempts_left } => {
+            ("Nagging".to_string(), Some(attempts_left as i64))
+        }
         ReminderState::Confirming { attempts_left } => {
             ("Confirming".to_string(), Some(attempts_left as i64))
         }

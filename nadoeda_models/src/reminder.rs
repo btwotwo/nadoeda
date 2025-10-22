@@ -50,5 +50,5 @@ pub struct Reminder {
     pub state: ReminderState,
     pub fire_at: ReminderFireTime,
     pub text: String,
-    pub user_id: UserId
+    pub user_id: UserId,
 }

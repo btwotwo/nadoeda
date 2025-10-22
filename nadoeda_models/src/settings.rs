@@ -9,4 +9,3 @@ pub struct TelegramSettings {
 pub struct Settings {
     pub telegram: TelegramSettings,
 }
-

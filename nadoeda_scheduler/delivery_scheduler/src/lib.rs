@@ -35,7 +35,6 @@ struct ScheduledReminderHandle {
     tx: mpsc::Sender<ReminderEvent>,
 }
 
-
 struct CleanupTask(watch::Sender<()>);
 
 type ReminderTaskStore = RwLock<HashMap<ReminderId, ScheduledReminderHandle>>;
@@ -50,8 +49,6 @@ impl DeliveryReminderScheduler {
     pub fn new(delivery_channel: Arc<dyn ReminderDeliveryChannel>) -> Self {
         let tasks = Arc::new(RwLock::new(HashMap::new()));
         let cleanup_task = Self::spawn_cleanup_task(Arc::clone(&tasks));
-        
-        
 
         Self {
             tasks,

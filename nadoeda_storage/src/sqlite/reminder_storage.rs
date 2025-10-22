@@ -89,7 +89,8 @@ RETURNING *
             text,
             id
         )
-        .fetch_one(&self.pool).await?;
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(updated_reminder.into())
     }

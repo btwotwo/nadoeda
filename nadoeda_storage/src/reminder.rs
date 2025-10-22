@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use async_trait::async_trait;
 use tokio::sync::RwLock;
 
-use nadoeda_models::{reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState}, user::UserId};
+use nadoeda_models::{
+    reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState},
+    user::UserId,
+};
 
 pub struct NewReminder {
     pub text: String,
@@ -16,10 +19,9 @@ pub trait ReminderStorage: Send + Sync {
     type Error: Send + Sync + 'static;
     async fn get(&self, id: ReminderId) -> Result<Option<Reminder>, Self::Error>;
     async fn get_all_user_reminders(&self, user_id: UserId) -> Result<Vec<Reminder>, Self::Error>;
-    async fn insert(&self, reminder: NewReminder) -> Result<Reminder, Self::Error> ;
+    async fn insert(&self, reminder: NewReminder) -> Result<Reminder, Self::Error>;
     async fn update(&self, reminder: Reminder) -> Result<Reminder, Self::Error>;
 }
-
 
 // struct InMemoryReminderStore {
 //     current_id: ReminderId,
@@ -31,7 +33,7 @@ pub trait ReminderStorage: Send + Sync {
 // }
 
 // impl InMemoryReminderStorage {
-    
+
 //     pub fn new() -> Self {
 //         InMemoryReminderStorage {
 //             store: RwLock::new(InMemoryReminderStore {

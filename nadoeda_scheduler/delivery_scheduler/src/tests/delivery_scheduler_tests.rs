@@ -180,12 +180,11 @@ async fn nagging_timeout_proptest(#[strategy(time_strategy())] time: NaiveTime) 
     ctx.scheduler.schedule_reminder(req).await.unwrap();
 
     wait(expected_delay).await;
-    
+
     let total_nagging_time =
         chrono::Duration::from_std(NAGGING_TIMEOUT * NAGGING_ATTEMPTS as u32).unwrap();
-    
+
     wait(total_nagging_time * 2).await; // Very long time
-    
 
     let msgs = ctx.received_messages.lock().unwrap();
 
@@ -215,7 +214,7 @@ async fn confirmation_timeout_proptest(#[strategy(time_strategy())] time: NaiveT
 
     let total_confirmation_time =
         chrono::Duration::from_std(CONFIRMATION_TIMEOUT * CONFIRMATION_ATTEMPTS as u32).unwrap();
-    
+
     wait(total_confirmation_time).await;
 
     let msgs = ctx.received_messages.lock().unwrap();

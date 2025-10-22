@@ -9,9 +9,7 @@ use teloxide::utils::markdown;
 
 use nadoeda_models::reminder::Reminder;
 
-use super::{
-    GlobalCommand, GlobalDialogue, GlobalState, HandlerResult,
-};
+use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
 #[derive(Clone, Default)]
 pub(super) enum EditRemindersState {

@@ -1,4 +1,4 @@
-mod scheduler;
 pub mod delivery;
+mod scheduler;
 
-pub use scheduler::{ReminderScheduler, ScheduledReminder, ScheduleRequest};
+pub use scheduler::{ReminderScheduler, ScheduleRequest, ScheduledReminder};
