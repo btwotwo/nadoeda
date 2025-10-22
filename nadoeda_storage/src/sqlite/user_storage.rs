@@ -1,8 +1,5 @@
 use async_trait::async_trait;
-use nadoeda_models::{
-    chrono_tz::{self, Tz},
-    user::{User, UserId},
-};
+use nadoeda_models::user::{User, UserId};
 
 use crate::user::{NewUser, UserInfoStorage};
 

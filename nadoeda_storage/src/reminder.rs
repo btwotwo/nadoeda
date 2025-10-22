@@ -1,10 +1,8 @@
-use std::collections::HashMap;
 
 use async_trait::async_trait;
-use tokio::sync::RwLock;
 
 use nadoeda_models::{
-    reminder::{Reminder, ReminderFireTime, ReminderId, ReminderState},
+    reminder::{Reminder, ReminderFireTime, ReminderId},
     user::UserId,
 };
 

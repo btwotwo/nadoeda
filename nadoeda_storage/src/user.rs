@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use nadoeda_models::{
-    chrono, chrono_tz,
+    chrono_tz,
     user::{User, UserId},
 };
 

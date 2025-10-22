@@ -1,8 +1,4 @@
-use nadoeda_models::{
-    chrono::NaiveTime,
-    reminder::{Reminder, ReminderFireTime, ReminderState},
-    user::UserId,
-};
+use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
 
 pub struct ReminderStorageModel {
     pub id: i64,
