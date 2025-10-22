@@ -11,17 +11,15 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS reminders (
        id              INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
        user_id         INTEGER NOT NULL,
-       state_kind      TEXT NOT NULL CHECK (
-                            state_kind IN ('Pending', 'Scheduled', 'Nagging', 'Confirming')
-                        ),
+       state_kind      TEXT NOT NULL,
        attempts_left   INTEGER NULL,
-       fire_at         TIME NOT NULL,  -- stored as HH:MM:SS
+       fire_at         TEXT NOT NULL,  -- stored as HH:MM:SS
        text            TEXT NOT NULL,
     
-        FOREIGN KEY (user_id)
-        REFERENCES users(id)
-        ON DELETE CASCADE
-        ON UPDATE CASCADE
+       FOREIGN KEY (user_id)
+       REFERENCES users(id)
+       ON DELETE CASCADE
+       ON UPDATE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_reminders_user_id ON reminders(user_id);
