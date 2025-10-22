@@ -9,4 +9,4 @@ async-trait = "0.1.89"
 log = "0.4"
 nadoeda_models = { version = "0.1.0", path = "../nadoeda_models" }
 tokio = {version = "1", features=["sync"] }
-sqlx = { version = "0.8.6", features = ["chrono", "derive", "macros", "migrate", "runtime-tokio", "sqlite", "tls-native-tls", "uuid"] }
+sqlx = { version = "0.8.6", features = ["chrono", "derive", "macros", "migrate", "runtime-tokio", "sqlite", "tls-native-tls"] }
