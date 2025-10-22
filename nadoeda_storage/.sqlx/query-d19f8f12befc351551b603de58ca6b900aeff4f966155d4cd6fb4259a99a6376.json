@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM reminders WHERE id = ?",
+  "query": "INSERT INTO reminders (user_id, state_kind, attempts_left, fire_at, text)\nVALUES (?, ?, ?, ?, ?) RETURNING *",
   "describe": {
     "columns": [
       {
@@ -35,7 +35,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 5
     },
     "nullable": [
       false,
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "0a3dc10a51d00bfe53dff232f6d44fc13310b9f353d5ed9d0d0c616563aa3acd"
+  "hash": "d19f8f12befc351551b603de58ca6b900aeff4f966155d4cd6fb4259a99a6376"
 }

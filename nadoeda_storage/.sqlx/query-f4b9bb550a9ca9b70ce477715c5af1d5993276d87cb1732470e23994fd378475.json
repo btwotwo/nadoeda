@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM reminders WHERE id = ?",
+  "query": "\nUPDATE reminders\nSET state_kind = ?,\n    attempts_left = ?,\n    fire_at = ?,\n    text = ?\nWHERE id = ?\nRETURNING *\n",
   "describe": {
     "columns": [
       {
@@ -35,7 +35,7 @@
       }
     ],
     "parameters": {
-      "Right": 1
+      "Right": 5
     },
     "nullable": [
       false,
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "0a3dc10a51d00bfe53dff232f6d44fc13310b9f353d5ed9d0d0c616563aa3acd"
+  "hash": "f4b9bb550a9ca9b70ce477715c5af1d5993276d87cb1732470e23994fd378475"
 }

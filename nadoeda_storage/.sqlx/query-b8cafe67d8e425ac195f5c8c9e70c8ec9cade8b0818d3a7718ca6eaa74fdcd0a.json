@@ -1,6 +1,6 @@
 {
   "db_name": "SQLite",
-  "query": "SELECT * FROM reminders WHERE id = ?",
+  "query": "SELECT * FROM reminders WHERE user_id = ?",
   "describe": {
     "columns": [
       {
@@ -46,5 +46,5 @@
       false
     ]
   },
-  "hash": "0a3dc10a51d00bfe53dff232f6d44fc13310b9f353d5ed9d0d0c616563aa3acd"
+  "hash": "b8cafe67d8e425ac195f5c8c9e70c8ec9cade8b0818d3a7718ca6eaa74fdcd0a"
 }
