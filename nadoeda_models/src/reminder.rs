@@ -2,7 +2,7 @@ use chrono::{NaiveTime, Timelike};
 
 use crate::user::UserId;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ReminderState {
     Pending,
     Scheduled,

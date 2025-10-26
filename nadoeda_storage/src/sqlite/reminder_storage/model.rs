@@ -66,3 +66,98 @@ pub fn parse_state(state: &str, attempts_left: Option<i64>) -> ReminderState {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+    use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
+
+    fn arb_reminder_state() -> impl Strategy<Value = ReminderState> {
+        prop_oneof![
+            Just(ReminderState::Pending),
+            Just(ReminderState::Scheduled),
+            (1u8..=10u8).prop_map(|a| ReminderState::Nagging { attempts_left: a }),
+            (1u8..=10u8).prop_map(|a| ReminderState::Confirming { attempts_left: a }),
+        ]
+    }
+
+    fn arb_fire_time() -> impl Strategy<Value = ReminderFireTime> {
+        "12:30:00".prop_map(|_| ReminderFireTime::from_string("12:30:00").unwrap())
+    }
+
+    fn arb_reminder() -> impl Strategy<Value = Reminder> {
+        (
+            any::<i64>(),       // id
+            any::<i64>(),       // user_id
+            arb_fire_time(),    // fire_at
+            ".*",               // text
+            arb_reminder_state()// state
+        ).prop_map(|(id, user_id, fire_at, text, state)| Reminder {
+            id,
+            user_id,
+            fire_at,
+            text,
+            state,
+        })
+    }
+
+    proptest! {
+        #[test]
+        fn test_convert_and_parse_state_roundtrip(state in arb_reminder_state()) {
+            let (kind, attempts) = convert_state(state.clone());
+            let parsed = parse_state(&kind, attempts);
+            match (state, parsed) {
+                (ReminderState::Pending, ReminderState::Pending)
+                | (ReminderState::Scheduled, ReminderState::Scheduled) => {},
+                (ReminderState::Nagging { attempts_left: a1 }, ReminderState::Nagging { attempts_left: a2 })
+                | (ReminderState::Confirming { attempts_left: a1 }, ReminderState::Confirming { attempts_left: a2 }) => {
+                    prop_assert_eq!(a1 as i64, a2 as i64);
+                },
+                (s1, s2) => prop_assert_eq!(s1, s2, "State mismatch after roundtrip")
+            }
+        }
+
+        #[test]
+        fn test_reminder_roundtrip(reminder in arb_reminder()) {
+            let storage: ReminderStorageModel = reminder.clone().into();
+            let restored: Reminder = storage.into();
+
+            prop_assert_eq!(reminder.id, restored.id);
+            prop_assert_eq!(reminder.user_id, restored.user_id);
+            prop_assert_eq!(reminder.text, restored.text);
+            prop_assert_eq!(reminder.fire_at.into_string(), restored.fire_at.into_string());
+
+            let (kind, attempts) = convert_state(reminder.state.clone());
+            let (kind2, attempts2) = convert_state(restored.state.clone());
+            
+            prop_assert_eq!(kind, kind2, "State kind mismatch after roundtrip");
+            prop_assert_eq!(attempts, attempts2, "Attempts mismatch after roundtrip");
+        }
+
+        #[test]
+        fn test_parse_state_handles_unknown_strings(s in ".*") {
+            // Any non-matching state string should default to Pending
+            let parsed = parse_state(&s, Some(5));
+            if s != "Pending" && s != "Scheduled" && s != "Nagging" && s != "Confirming" {
+                match parsed {
+                    ReminderState::Pending => {},
+                    _ => prop_assert!(false, "Unexpected state for unknown string: {}", s),
+                }
+            }
+        }
+
+        #[test]
+        fn test_convert_state_consistency(state in arb_reminder_state()) {
+            let (kind, attempts) = convert_state(state.clone());
+            match (kind.as_str(), attempts, state) {
+                ("Pending", None, ReminderState::Pending) => {},
+                ("Scheduled", None, ReminderState::Scheduled) => {},
+                ("Nagging", Some(a), ReminderState::Nagging { attempts_left }) => prop_assert_eq!(a, attempts_left as i64),
+                ("Confirming", Some(a), ReminderState::Confirming { attempts_left }) => prop_assert_eq!(a, attempts_left as i64),
+                (k, _, s) => prop_assert!(false, "Invalid conversion: kind={}, state={:?}", k, s),
+            }
+        }
+    }
+}

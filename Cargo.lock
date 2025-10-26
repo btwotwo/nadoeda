@@ -2136,7 +2136,10 @@ dependencies = [
  "async-trait",
  "log",
  "nadoeda_models",
+ "proptest",
+ "proptest-arbitrary-interop",
  "sqlx",
+ "test-strategy",
  "tokio",
 ]
 
