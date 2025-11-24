@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use dptree::case;
-use nadoeda_storage::ReminderStorage;
+use nadoeda_storage::{sqlite::reminder_storage::SqliteReminderStorage, ReminderStorage};
 use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
 use teloxide::types::ParseMode;
@@ -18,12 +18,12 @@ pub(super) enum EditRemindersState {
 }
 
 async fn list_reminders(
-    storage: Arc<dyn ReminderStorage>,
+    storage: Arc<SqliteReminderStorage>,
     bot: Bot,
     dialogue: GlobalDialogue,
     msg: Message,
 ) -> HandlerResult {
-    let reminders = storage.get_all().await;
+    let reminders = storage.get_all_user_reminders(0).await?;
     let message = if reminders.is_empty() {
         "You have to create at least one reminder\\!".to_string()
     } else {

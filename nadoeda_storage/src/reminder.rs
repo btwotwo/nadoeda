@@ -1,4 +1,6 @@
 
+use std::error::Error;
+
 use async_trait::async_trait;
 
 use nadoeda_models::{
@@ -14,7 +16,8 @@ pub struct NewReminder {
 
 #[async_trait]
 pub trait ReminderStorage: Send + Sync {
-    type Error: Send + Sync + 'static;
+    type Error: std::error::Error + Send + Sync + 'static;
+    
     async fn get(&self, id: ReminderId) -> Result<Option<Reminder>, Self::Error>;
     async fn get_all_user_reminders(&self, user_id: UserId) -> Result<Vec<Reminder>, Self::Error>;
     async fn insert(&self, reminder: NewReminder) -> Result<Reminder, Self::Error>;

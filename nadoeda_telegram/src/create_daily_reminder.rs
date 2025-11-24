@@ -1,11 +1,13 @@
+use std::error::Error;
 use std::sync::Arc;
 
 use chrono::NaiveTime;
 use dptree::case;
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest};
-use nadoeda_storage::ReminderStorage;
+use nadoeda_storage::sqlite::reminder_storage::SqliteReminderStorage;
+use nadoeda_storage::{NewReminder, ReminderStorage};
 use teloxide::dispatching::UpdateHandler;
-use teloxide::prelude::*;
+use teloxide::prelude::*; 
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, types::Message};
 
@@ -119,7 +121,7 @@ If you want to change something, please type /cancel and start over",
 }
 
 async fn confirm_reminder(
-    storage: Arc<dyn ReminderStorage<Error = anyhow::Error>>,
+    storage: Arc<SqliteReminderStorage>,
     bot: Bot,
     dialogue: GlobalDialogue,
     (text, firing_time): (String, NaiveTime),
@@ -129,17 +131,13 @@ async fn confirm_reminder(
     let reminder = NewReminder {
         text,
         fire_at: ReminderFireTime::new(firing_time),
+        user_id: 0
     };
 
-    let reminder_id = storage.insert(reminder).await?;
+    let reminder = storage.insert(reminder).await?;
     bot.answer_callback_query(query.id).await?;
 
-    log::info!("Created reminder with id {}", reminder_id);
-
-    let reminder = storage
-        .get(reminder_id)
-        .await
-        .expect("Reminder was just created.");
+    log::info!("Created reminder with id {}", reminder.id);
 
     scheduler
         .schedule_reminder(ScheduleRequest::new(reminder))
@@ -187,7 +185,7 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 mod tests {
     use async_trait::async_trait;
     use nadoeda_scheduler::ScheduledReminder;
-    use nadoeda_storage::{InMemoryReminderStorage, ReminderStorage};
+    use nadoeda_storage::{sqlite::{self, reminder_storage::SqliteReminderStorage}, ReminderStorage};
     use std::sync::Arc;
     use teloxide::{
         dispatching::dialogue::{self, InMemStorage},
@@ -229,9 +227,10 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[sqlite::sqlx::test]
     async fn test() {
-        let reminder_storage: Arc<dyn ReminderStorage> = Arc::new(InMemoryReminderStorage::new());
+        let pool = sqlite::sqlx::SqlitePool::connect("sqlite:///tmp/mock.db").await.unwrap();
+        let reminder_storage = Arc::new(SqliteReminderStorage::new(pool));
         let scheduler: Arc<dyn ReminderScheduler> = Arc::new(NoopReminderScheduler);
         let schema =
             dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>().branch(schema());

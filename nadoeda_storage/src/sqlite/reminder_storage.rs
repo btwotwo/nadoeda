@@ -1,20 +1,37 @@
 mod model;
 
-use crate::{ReminderStorage, reminder::NewReminder};
 use async_trait::async_trait;
 use model::{ReminderStorageModel, convert_state};
 use nadoeda_models::{
     reminder::{Reminder, ReminderId, ReminderState},
     user::UserId,
 };
+use thiserror::Error;
+
+use crate::reminder::{NewReminder, ReminderStorage};
+
+#[derive(Debug, Error)]
+pub enum SqliteReminderError {
+    #[error(transparent)]
+    Sqlx(#[from] sqlx::Error),
+}
 
 pub struct SqliteReminderStorage {
     pool: sqlx::SqlitePool,
 }
 
+impl SqliteReminderStorage {
+    pub fn new(pool: sqlx::SqlitePool) -> Self {
+        Self {
+            pool
+        }
+    }
+}
+
+
 #[async_trait]
 impl ReminderStorage for SqliteReminderStorage {
-    type Error = anyhow::Error;
+    type Error = SqliteReminderError;
 
     async fn get(&self, id: ReminderId) -> Result<Option<Reminder>, Self::Error> {
         let reminder = sqlx::query_as!(

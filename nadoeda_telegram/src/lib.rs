@@ -6,7 +6,7 @@ pub use teloxide;
 use create_daily_reminder::CreatingDailyReminderState;
 use dptree::case;
 use nadoeda_scheduler::ReminderScheduler;
-use nadoeda_storage::ReminderStorage;
+use nadoeda_storage::{sqlite::reminder_storage::SqliteReminderStorage, ReminderStorage};
 use std::sync::Arc;
 use teloxide::{
     dispatching::dialogue, dispatching::dialogue::InMemStorage, macros::BotCommands, prelude::*,
@@ -28,7 +28,7 @@ impl TelegramInteractionInterface {
     pub async fn start(
         bot: teloxide::Bot,
         scheduler: Arc<dyn ReminderScheduler>,
-        reminder_storage: Arc<dyn ReminderStorage<Error = anyhow::Error>>,
+        reminder_storage: Arc<SqliteReminderStorage>,
     ) {
         log::info!("Starting Telegram interaction interface");
 
