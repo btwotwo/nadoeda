@@ -239,6 +239,7 @@ fn expected_delay(reminder: &Reminder) -> chrono::Duration {
 fn reminder_at(time: NaiveTime) -> Reminder {
     Reminder {
         id: 1,
+        user_id: 1,
         state: ReminderState::Pending,
         fire_at: ReminderFireTime::new(time),
         text: "Reminder Text".to_owned(),

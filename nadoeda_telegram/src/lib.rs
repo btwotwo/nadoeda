@@ -28,7 +28,7 @@ impl TelegramInteractionInterface {
     pub async fn start(
         bot: teloxide::Bot,
         scheduler: Arc<dyn ReminderScheduler>,
-        reminder_storage: Arc<dyn ReminderStorage>,
+        reminder_storage: Arc<dyn ReminderStorage<Error = anyhow::Error>>,
     ) {
         log::info!("Starting Telegram interaction interface");
 

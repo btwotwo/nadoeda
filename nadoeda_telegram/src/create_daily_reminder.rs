@@ -3,13 +3,13 @@ use std::sync::Arc;
 use chrono::NaiveTime;
 use dptree::case;
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest};
+use nadoeda_storage::ReminderStorage;
 use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, types::Message};
 
 use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
-use nadoeda_storage::{NewReminder, ReminderStorage};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
@@ -119,7 +119,7 @@ If you want to change something, please type /cancel and start over",
 }
 
 async fn confirm_reminder(
-    storage: Arc<dyn ReminderStorage>,
+    storage: Arc<dyn ReminderStorage<Error = anyhow::Error>>,
     bot: Bot,
     dialogue: GlobalDialogue,
     (text, firing_time): (String, NaiveTime),

@@ -1,5 +1,3 @@
-mod reminder;
-mod sqlite;
-mod user;
-
-pub use reminder::ReminderStorage;
+pub mod reminder;
+pub mod user;
+pub mod sqlite;
