@@ -185,7 +185,9 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 mod tests {
     use async_trait::async_trait;
     use nadoeda_scheduler::ScheduledReminder;
+    use nadoeda_storage::sqlite::sqlx::test;
     use nadoeda_storage::{sqlite::{self, reminder_storage::SqliteReminderStorage}, ReminderStorage};
+    use sqlx::{Pool, Sqlite};
     use std::sync::Arc;
     use teloxide::{
         dispatching::dialogue::{self, InMemStorage},
@@ -228,8 +230,7 @@ mod tests {
     }
 
     #[sqlite::sqlx::test]
-    async fn test() {
-        let pool = sqlite::sqlx::SqlitePool::connect("sqlite:///tmp/mock.db").await.unwrap();
+    async fn test(pool: Pool<Sqlite>) {
         let reminder_storage = Arc::new(SqliteReminderStorage::new(pool));
         let scheduler: Arc<dyn ReminderScheduler> = Arc::new(NoopReminderScheduler);
         let schema =

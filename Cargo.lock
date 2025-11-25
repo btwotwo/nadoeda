@@ -2156,6 +2156,7 @@ dependencies = [
  "nadoeda_scheduler",
  "nadoeda_storage",
  "serde",
+ "sqlx",
  "teloxide",
  "teloxide_tests",
  "tokio",
