@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use nadoeda_delivery_scheduler::DeliveryReminderScheduler;
 use nadoeda_models::reminder::Reminder;
 use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
-use nadoeda_storage::{InMemoryReminderStorage, ReminderStorage};
+use nadoeda_storage::{sqlite::{reminder_storage::SqliteReminderStorage, sqlx::SqlitePool}, ReminderStorage};
 use nadoeda_telegram::{TelegramInteractionInterface, teloxide};
 
 struct PrinterDeliveryChannel;
@@ -22,7 +22,8 @@ impl ReminderDeliveryChannel for PrinterDeliveryChannel {
 async fn main() {
     pretty_env_logger::init();
 
-    let storage: Arc<dyn ReminderStorage> = Arc::new(InMemoryReminderStorage::new());
+    let sqlite_pool = SqlitePool::connect("sqlite:///tmp/nadoeda.db").await.expect("Error creating SQLite pool");
+    let storage: Arc<SqliteReminderStorage> = Arc::new(SqliteReminderStorage::new(sqlite_pool.clone()));
     let scheduler = Arc::new(DeliveryReminderScheduler::new(Arc::new(
         PrinterDeliveryChannel,
     )));

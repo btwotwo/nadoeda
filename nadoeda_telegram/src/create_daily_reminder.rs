@@ -185,7 +185,6 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 mod tests {
     use async_trait::async_trait;
     use nadoeda_scheduler::ScheduledReminder;
-    use nadoeda_storage::sqlite::sqlx::test;
     use nadoeda_storage::{sqlite::{self, reminder_storage::SqliteReminderStorage}, ReminderStorage};
     use sqlx::{Pool, Sqlite};
     use std::sync::Arc;
