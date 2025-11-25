@@ -7,11 +7,14 @@ use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest};
 use nadoeda_storage::sqlite::reminder_storage::SqliteReminderStorage;
 use nadoeda_storage::{NewReminder, ReminderStorage};
 use teloxide::dispatching::UpdateHandler;
-use teloxide::prelude::*; 
+use teloxide::dptree::filter_map;
+use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, types::Message};
 
 use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
+
+use crate::AuthenticationInfo;
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
@@ -32,6 +35,7 @@ pub(super) enum CreatingDailyReminderState {
 async fn create_daily_reminder_start(
     bot: Bot,
     dialogue: GlobalDialogue,
+    auth: AuthenticationInfo,
     msg: Message,
 ) -> HandlerResult {
     bot.send_message(
@@ -42,13 +46,19 @@ async fn create_daily_reminder_start(
 
     dialogue
         .update(GlobalState::CreatingDailyReminder(
+            auth,
             CreatingDailyReminderState::WaitingForReminderText,
         ))
         .await?;
 
     Ok(())
 }
-async fn receive_reminder_text(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResult {
+async fn receive_reminder_text(
+    bot: Bot,
+    dialogue: GlobalDialogue,
+    auth: AuthenticationInfo,
+    msg: Message,
+) -> HandlerResult {
     match msg.text() {
         Some(text) => {
             let message = format!(
@@ -58,6 +68,7 @@ async fn receive_reminder_text(bot: Bot, dialogue: GlobalDialogue, msg: Message)
             bot.send_message(msg.chat.id, message).await?;
             dialogue
                 .update(GlobalState::CreatingDailyReminder(
+                    AuthenticationInfo(0),
                     CreatingDailyReminderState::WaitingForFiringTime {
                         text: text.to_string(),
                     },
@@ -75,7 +86,7 @@ async fn receive_reminder_text(bot: Bot, dialogue: GlobalDialogue, msg: Message)
 async fn receive_firing_time(
     bot: Bot,
     dialogue: GlobalDialogue,
-    text: String,
+    (auth, text): (AuthenticationInfo, String),
     msg: Message,
 ) -> HandlerResult {
     match msg
@@ -97,6 +108,7 @@ If you want to change something, please type /cancel and start over",
 
             dialogue
                 .update(GlobalState::CreatingDailyReminder(
+                    AuthenticationInfo(0),
                     CreatingDailyReminderState::WaitingForConfirmation {
                         text,
                         firing_time: time,
@@ -124,14 +136,14 @@ async fn confirm_reminder(
     storage: Arc<SqliteReminderStorage>,
     bot: Bot,
     dialogue: GlobalDialogue,
-    (text, firing_time): (String, NaiveTime),
+    (auth, text, firing_time): (AuthenticationInfo, String, NaiveTime),
     query: CallbackQuery,
     scheduler: Arc<dyn ReminderScheduler>,
 ) -> HandlerResult {
     let reminder = NewReminder {
         text,
         fire_at: ReminderFireTime::new(firing_time),
-        user_id: 0
+        user_id: 0,
     };
 
     let reminder = storage.insert(reminder).await?;
@@ -155,27 +167,44 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
         .branch(
             Update::filter_message()
                 .branch(teloxide::filter_command::<GlobalCommand, _>().branch(
-                    case![GlobalState::Idle].branch(
+                    case![GlobalState::Authenticated(auth)].branch(
                         case![GlobalCommand::CreateReminder].endpoint(create_daily_reminder_start),
                     ),
                 ))
                 .branch(
-                    case![GlobalState::CreatingDailyReminder(x)]
-                        .branch(
-                            case![CreatingDailyReminderState::WaitingForReminderText]
-                                .endpoint(receive_reminder_text),
-                        )
-                        .branch(
-                            case![CreatingDailyReminderState::WaitingForFiringTime { text }]
-                                .endpoint(receive_firing_time),
-                        ),
+                    dptree::filter_map(|x| match x {
+                        GlobalState::CreatingDailyReminder(auth, x) => Some((auth, x)),
+                        _ => None,
+                    })
+                    .branch(
+                        dptree::filter_map(|(auth, x): (AuthenticationInfo, _)| match x {
+                            CreatingDailyReminderState::WaitingForReminderText => Some(auth),
+                            _ => None,
+                        })
+                        .endpoint(receive_reminder_text),
+                    )
+                    .branch(
+                        dptree::filter_map(|(auth, x): (AuthenticationInfo, _)| match x {
+                            CreatingDailyReminderState::WaitingForFiringTime { text } => {
+                                Some((auth, text))
+                            }
+                            _ => None,
+                        })
+                        .endpoint(receive_firing_time),
+                    ),
                 ),
         )
         .branch(
             Update::filter_callback_query().branch(
-                case![GlobalState::CreatingDailyReminder(x)].branch(
-                    case![CreatingDailyReminderState::WaitingForConfirmation { text, firing_time }]
-                        .endpoint(confirm_reminder),
+                case![GlobalState::CreatingDailyReminder(auth, x)].branch(
+                    dptree::filter_map(|(auth, x): (AuthenticationInfo, _)| match x {
+                        CreatingDailyReminderState::WaitingForConfirmation {
+                            text,
+                            firing_time,
+                        } => Some((auth, text, firing_time)),
+                        _ => None,
+                    })
+                    .endpoint(confirm_reminder),
                 ),
             ),
         )
@@ -185,7 +214,10 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 mod tests {
     use async_trait::async_trait;
     use nadoeda_scheduler::ScheduledReminder;
-    use nadoeda_storage::{sqlite::{self, reminder_storage::SqliteReminderStorage}, ReminderStorage};
+    use nadoeda_storage::{
+        ReminderStorage,
+        sqlite::{self, reminder_storage::SqliteReminderStorage},
+    };
     use sqlx::{Pool, Sqlite};
     use std::sync::Arc;
     use teloxide::{
@@ -240,15 +272,17 @@ mod tests {
             reminder_storage,
             scheduler,
             InMemStorage::<GlobalState>::new(),
-            GlobalState::Idle
+            GlobalState::Authenticated(AuthenticationInfo(0))
         ]);
 
         bot.set_state(GlobalState::CreatingDailyReminder(
+            AuthenticationInfo(0),
             CreatingDailyReminderState::WaitingForReminderText,
         ))
         .await;
 
         bot.dispatch_and_check_state(GlobalState::CreatingDailyReminder(
+            AuthenticationInfo(0),
             CreatingDailyReminderState::WaitingForFiringTime {
                 text: "New Reminder".to_string(),
             },

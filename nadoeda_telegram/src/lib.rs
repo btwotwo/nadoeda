@@ -1,6 +1,7 @@
 mod create_daily_reminder;
 mod edit_reminders;
 
+use nadoeda_models::user::UserId;
 pub use teloxide;
 
 use create_daily_reminder::CreatingDailyReminderState;
@@ -15,11 +16,15 @@ use teloxide::{
 type GlobalDialogue = Dialogue<GlobalState, InMemStorage<GlobalState>>;
 type HandlerResult = anyhow::Result<()>;
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+struct AuthenticationInfo(UserId);
+
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 enum GlobalState {
     #[default]
-    Idle,
-    CreatingDailyReminder(CreatingDailyReminderState),
+    Unauthorized,
+    Authenticated(AuthenticationInfo),
+    CreatingDailyReminder(AuthenticationInfo, CreatingDailyReminderState),
 }
 
 pub struct TelegramInteractionInterface;
@@ -30,7 +35,7 @@ impl TelegramInteractionInterface {
         scheduler: Arc<dyn ReminderScheduler>,
         reminder_storage: Arc<SqliteReminderStorage>,
     ) {
-        log::info!("Starting Telegram interaction interface");
+        log::info!("Starting Telegram UI.");
 
         let cancel_handler = Update::filter_message().branch(
             teloxide::filter_command::<GlobalCommand, _>()
