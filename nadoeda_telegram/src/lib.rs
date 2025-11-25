@@ -1,6 +1,9 @@
 mod create_daily_reminder;
 mod edit_reminders;
+mod authenticate_user;
+mod util;
 
+use authenticate_user::AuthenticationState;
 use nadoeda_models::user::UserId;
 pub use teloxide;
 
@@ -22,7 +25,8 @@ struct AuthenticationInfo(UserId);
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 enum GlobalState {
     #[default]
-    Unauthorized,
+    Unauthenticated,
+    Authenticating(AuthenticationState),
     Authenticated(AuthenticationInfo),
     CreatingDailyReminder(AuthenticationInfo, CreatingDailyReminderState),
 }
@@ -50,6 +54,7 @@ impl TelegramInteractionInterface {
 
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(cancel_handler)
+            .branch(authenticate_user::schema())
             .branch(create_daily_reminder::schema())
             .branch(edit_reminders::schema())
             .branch(invalid_state_handler)
