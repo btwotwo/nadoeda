@@ -15,6 +15,7 @@ use teloxide::{Bot, types::Message};
 use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
 
 use crate::AuthenticationInfo;
+use crate::util::AuthInfoExtractor;
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
@@ -86,7 +87,8 @@ async fn receive_reminder_text(
 async fn receive_firing_time(
     bot: Bot,
     dialogue: GlobalDialogue,
-    (auth, text): (AuthenticationInfo, String),
+    text: String,
+    auth: AuthenticationInfo,
     msg: Message,
 ) -> HandlerResult {
     match msg
@@ -136,7 +138,8 @@ async fn confirm_reminder(
     storage: Arc<SqliteReminderStorage>,
     bot: Bot,
     dialogue: GlobalDialogue,
-    (auth, text, firing_time): (AuthenticationInfo, String, NaiveTime),
+    (text, firing_time): (String, NaiveTime),
+    auth: AuthenticationInfo,
     query: CallbackQuery,
     scheduler: Arc<dyn ReminderScheduler>,
 ) -> HandlerResult {
@@ -153,7 +156,7 @@ async fn confirm_reminder(
 
     scheduler
         .schedule_reminder(ScheduleRequest::new(reminder))
-        .await;
+        .await?;
 
     bot.send_message(dialogue.chat_id(), "Reminder saved and scheduled.")
         .await?;
@@ -172,40 +175,29 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
                     ),
                 ))
                 .branch(
-                    dptree::filter_map(|x| match x {
-                        GlobalState::CreatingDailyReminder(auth, x) => Some((auth, x)),
-                        _ => None,
-                    })
-                    .branch(
-                        dptree::filter_map(|(auth, x): (AuthenticationInfo, _)| match x {
-                            CreatingDailyReminderState::WaitingForReminderText => Some(auth),
-                            _ => None,
-                        })
-                        .endpoint(receive_reminder_text),
-                    )
-                    .branch(
-                        dptree::filter_map(|(auth, x): (AuthenticationInfo, _)| match x {
-                            CreatingDailyReminderState::WaitingForFiringTime { text } => {
-                                Some((auth, text))
-                            }
-                            _ => None,
-                        })
-                        .endpoint(receive_firing_time),
-                    ),
+                    case![GlobalState::CreatingDailyReminder(auth, x)]
+                        .extract_auth_info::<CreatingDailyReminderState>()
+                        .branch(
+                            case![CreatingDailyReminderState::WaitingForReminderText]
+                                .endpoint(receive_reminder_text),
+                        )
+                        .branch(
+                            case![CreatingDailyReminderState::WaitingForFiringTime { text }]
+                                .endpoint(receive_firing_time),
+                        ),
                 ),
         )
         .branch(
             Update::filter_callback_query().branch(
-                case![GlobalState::CreatingDailyReminder(auth, x)].branch(
-                    dptree::filter_map(|(auth, x): (AuthenticationInfo, _)| match x {
-                        CreatingDailyReminderState::WaitingForConfirmation {
+                case![GlobalState::CreatingDailyReminder(auth, x)]
+                    .extract_auth_info::<CreatingDailyReminderState>()
+                    .branch(
+                        case![CreatingDailyReminderState::WaitingForConfirmation {
                             text,
-                            firing_time,
-                        } => Some((auth, text, firing_time)),
-                        _ => None,
-                    })
-                    .endpoint(confirm_reminder),
-                ),
+                            firing_time
+                        }]
+                        .endpoint(confirm_reminder),
+                    ),
             ),
         )
 }
