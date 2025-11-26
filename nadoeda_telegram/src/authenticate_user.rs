@@ -39,10 +39,18 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 mod tests {
     use std::sync::Arc;
 
+    use crate::AuthenticationInfo;
+
     use super::*;
 
     use nadoeda_models::chrono_tz;
-    use nadoeda_storage::{sqlite::{reminder_storage::SqliteReminderStorage, user_storage::{self, SqliteUserInfoStorage}}, NewUser, UserInfoStorage};
+    use nadoeda_storage::{
+        NewUser, UserInfoStorage,
+        sqlite::{
+            reminder_storage::SqliteReminderStorage,
+            user_storage::{self, SqliteUserInfoStorage},
+        },
+    };
     use sqlx::{Pool, Sqlite};
     use teloxide::{
         dispatching::dialogue::{self, InMemStorage},
@@ -81,7 +89,6 @@ mod tests {
         .await;
     }
 
-
     #[sqlx::test(migrations = "../nadoeda_storage/migrations")]
     async fn given_user_exists_should_not_ask_for_info(pool: Pool<Sqlite>) {
         let storage = storage(pool.clone());
@@ -91,7 +98,13 @@ mod tests {
         let mock_message = MockMessageText::new().text("Random Text");
         let chat_id = mock_message.chat.id;
 
-        user_storage.create(NewUser { timezone: chrono_tz::Tz::Europe__Prague, tg_chat_id: Some(chat_id.0) }).await.unwrap();
+        let user = user_storage
+            .create(NewUser {
+                timezone: chrono_tz::Tz::Europe__Prague,
+                tg_chat_id: Some(chat_id.0),
+            })
+            .await
+            .unwrap();
 
         let mut bot = MockBot::new(MockMessageText::new().text("Random Text"), schema);
 
@@ -104,5 +117,9 @@ mod tests {
 
         bot.set_state(GlobalState::Unauthenticated).await;
         
+        bot.dispatch_and_check_state(GlobalState::AuthenticatedV2(
+            AuthenticationInfo(user.id),
+            crate::AuthenticatedActionState::Idle,
+        )).await
     }
 }
