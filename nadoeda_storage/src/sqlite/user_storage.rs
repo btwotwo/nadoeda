@@ -11,8 +11,8 @@ pub struct SqliteUserInfoStorage {
 }
 
 impl SqliteUserInfoStorage {
-    pub fn new(pool: sqlx::SqlitePool) -> anyhow::Result<Self> {
-        Ok(Self { pool })
+    pub fn new(pool: sqlx::SqlitePool) -> Self {
+        Self { pool }
     }
 }
 

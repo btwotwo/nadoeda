@@ -15,7 +15,7 @@ use teloxide::{Bot, types::Message};
 use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
 
 use crate::AuthenticationInfo;
-use crate::util::AuthInfoExtractor;
+use crate::util::AuthInfoInjector;
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
@@ -176,7 +176,7 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
                 ))
                 .branch(
                     case![GlobalState::CreatingDailyReminder(auth, x)]
-                        .extract_auth_info::<CreatingDailyReminderState>()
+                        .inject_auth_and_state::<CreatingDailyReminderState>()
                         .branch(
                             case![CreatingDailyReminderState::WaitingForReminderText]
                                 .endpoint(receive_reminder_text),
@@ -190,7 +190,7 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
         .branch(
             Update::filter_callback_query().branch(
                 case![GlobalState::CreatingDailyReminder(auth, x)]
-                    .extract_auth_info::<CreatingDailyReminderState>()
+                    .inject_auth_and_state::<CreatingDailyReminderState>()
                     .branch(
                         case![CreatingDailyReminderState::WaitingForConfirmation {
                             text,

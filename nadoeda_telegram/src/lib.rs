@@ -27,8 +27,16 @@ enum GlobalState {
     #[default]
     Unauthenticated,
     Authenticating(AuthenticationState),
+    AuthenticatedV2(AuthenticationInfo, AuthenticatedActionState),
     Authenticated(AuthenticationInfo),
     CreatingDailyReminder(AuthenticationInfo, CreatingDailyReminderState),
+}
+
+#[derive(Default, Clone, Debug, PartialEq, Eq)]
+enum AuthenticatedActionState {
+    #[default]
+    Idle,
+    CreatingDailyReminnder(CreatingDailyReminderState)
 }
 
 pub struct TelegramInteractionInterface;
