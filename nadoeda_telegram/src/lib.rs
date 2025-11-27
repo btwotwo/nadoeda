@@ -4,7 +4,7 @@ mod authenticate_user;
 mod util;
 
 use authenticate_user::AuthenticationState;
-use nadoeda_models::user::UserId;
+use nadoeda_models::user::{User, UserId};
 pub use teloxide;
 
 use create_daily_reminder::CreatingDailyReminderState;
@@ -20,7 +20,7 @@ type GlobalDialogue = Dialogue<GlobalState, InMemStorage<GlobalState>>;
 type HandlerResult = anyhow::Result<()>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-struct AuthenticationInfo(UserId);
+struct AuthenticationInfo(User);
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 enum GlobalState {

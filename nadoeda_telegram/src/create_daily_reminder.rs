@@ -3,6 +3,8 @@ use std::sync::Arc;
 
 use chrono::NaiveTime;
 use dptree::case;
+use nadoeda_models::chrono_tz;
+use nadoeda_models::user::User;
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest};
 use nadoeda_storage::sqlite::reminder_storage::SqliteReminderStorage;
 use nadoeda_storage::{NewReminder, ReminderStorage};
@@ -69,7 +71,11 @@ async fn receive_reminder_text(
             bot.send_message(msg.chat.id, message).await?;
             dialogue
                 .update(GlobalState::CreatingDailyReminder(
-                    AuthenticationInfo(0),
+                    AuthenticationInfo(User {
+                        id: 0,
+                        tg_chat_id: None,
+                        timezone: chrono_tz::Tz::Europe__Prague,
+                    }),
                     CreatingDailyReminderState::WaitingForFiringTime {
                         text: text.to_string(),
                     },
@@ -110,7 +116,11 @@ If you want to change something, please type /cancel and start over",
 
             dialogue
                 .update(GlobalState::CreatingDailyReminder(
-                    AuthenticationInfo(0),
+                    AuthenticationInfo(User {
+                        id: 0,
+                        tg_chat_id: None,
+                        timezone: chrono_tz::Tz::Europe__Prague,
+                    }),
                     CreatingDailyReminderState::WaitingForConfirmation {
                         text,
                         firing_time: time,
@@ -205,6 +215,7 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 #[cfg(test)]
 mod tests {
     use async_trait::async_trait;
+    use nadoeda_models::{chrono_tz, user::User};
     use nadoeda_scheduler::ScheduledReminder;
     use nadoeda_storage::{
         ReminderStorage,
@@ -264,17 +275,29 @@ mod tests {
             reminder_storage,
             scheduler,
             InMemStorage::<GlobalState>::new(),
-            GlobalState::Authenticated(AuthenticationInfo(0))
+            GlobalState::Authenticated(AuthenticationInfo(User {
+                id: 0,
+                tg_chat_id: Some(0),
+                timezone: chrono_tz::Tz::Europe__Prague
+            }))
         ]);
 
         bot.set_state(GlobalState::CreatingDailyReminder(
-            AuthenticationInfo(0),
+            AuthenticationInfo(User {
+                id: 0,
+                tg_chat_id: Some(0),
+                timezone: chrono_tz::Tz::Europe__Prague,
+            }),
             CreatingDailyReminderState::WaitingForReminderText,
         ))
         .await;
 
-        bot.dispatch_and_check_state(GlobalState::CreatingDailyReminder(
-            AuthenticationInfo(0),
+        bot.dispatch_and_check_state(GlobalState::CreatingDailyReminder( 
+           AuthenticationInfo(User {
+                id: 0,
+                tg_chat_id: None,
+                timezone: chrono_tz::Tz::Europe__Prague,
+            }),
             CreatingDailyReminderState::WaitingForFiringTime {
                 text: "New Reminder".to_string(),
             },

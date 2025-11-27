@@ -1,4 +1,11 @@
+use std::sync::Arc;
+
+use chrono::TimeZone;
 use dptree::case;
+use nadoeda_models::chrono_tz;
+use nadoeda_models::user::User;
+use nadoeda_storage::sqlite::user_storage::SqliteUserInfoStorage;
+use nadoeda_storage::{NewUser, UserInfoStorage};
 use teloxide::prelude::*;
 use teloxide::{
     dispatching::{UpdateFilterExt, UpdateHandler},
@@ -6,24 +13,83 @@ use teloxide::{
     types::Update,
 };
 
-use crate::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
+use crate::{
+    AuthenticatedActionState, AuthenticationInfo, GlobalCommand, GlobalDialogue, GlobalState,
+    HandlerResult,
+};
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub(super) enum AuthenticationState {
     #[default]
     Start,
-    WaitingForUserInfo,
+    WaitingForTimezone,
 }
 
-async fn try_authenticate(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResult {
-    bot.send_message(msg.chat.id, "Not seen before. Send me something")
-        .await?;
+async fn try_authenticate(
+    bot: Bot,
+    dialogue: GlobalDialogue,
+    msg: Message,
+    user_store: Arc<SqliteUserInfoStorage>,
+) -> HandlerResult {
+    let user = user_store.get_by_tg_chat(msg.chat.id.0).await?;
 
-    dialogue
-        .update(GlobalState::Authenticating(
-            AuthenticationState::WaitingForUserInfo,
-        ))
-        .await?;
+    if let Some(user) = user {
+        bot.send_message(msg.chat.id, "I've seen you before. Proceed.")
+            .await?;
+
+        dialogue
+            .update(GlobalState::AuthenticatedV2(
+                AuthenticationInfo(user),
+                crate::AuthenticatedActionState::Idle,
+            ))
+            .await?;
+    } else {
+        bot.send_message(msg.chat.id, "Not seen before. Send me your timezone.")
+            .await?;
+
+        dialogue
+            .update(GlobalState::Authenticating(
+                AuthenticationState::WaitingForTimezone,
+            ))
+            .await?;
+    }
+
+    Ok(())
+}
+
+pub async fn get_user_timezone(
+    bot: Bot,
+    dialogue: GlobalDialogue,
+    msg: Message,
+    user_store: Arc<SqliteUserInfoStorage>,
+) -> HandlerResult {
+    if let Some(tz_str) = msg.text() {
+        match tz_str.parse::<chrono_tz::Tz>() {
+            Ok(timezone) => {
+                let user = user_store
+                    .create(NewUser {
+                        timezone,
+                        tg_chat_id: Some(msg.chat.id.0),
+                    })
+                    .await?;
+
+                bot.send_message(msg.chat.id, "Timezone received. Welcome aboard.");
+
+                dialogue
+                    .update(GlobalState::AuthenticatedV2(
+                        AuthenticationInfo(user),
+                        AuthenticatedActionState::Idle,
+                    ))
+                    .await?;
+            }
+            Err(_) => {
+                bot.send_message(msg.chat.id, "Invalid timezone. Please try again.")
+                    .await?;
+            }
+        }
+    } else {
+        bot.send_message(msg.chat.id, "Invalid.").await?;
+    };
 
     Ok(())
 }
@@ -84,7 +150,7 @@ mod tests {
         bot.set_state(GlobalState::Unauthenticated).await;
 
         bot.dispatch_and_check_state(GlobalState::Authenticating(
-            AuthenticationState::WaitingForUserInfo,
+            AuthenticationState::WaitingForTimezone,
         ))
         .await;
     }
@@ -116,10 +182,11 @@ mod tests {
         ]);
 
         bot.set_state(GlobalState::Unauthenticated).await;
-        
+
         bot.dispatch_and_check_state(GlobalState::AuthenticatedV2(
-            AuthenticationInfo(user.id),
+            AuthenticationInfo(user),
             crate::AuthenticatedActionState::Idle,
-        )).await
+        ))
+        .await
     }
 }

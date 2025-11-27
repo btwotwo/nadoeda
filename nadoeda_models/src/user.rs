@@ -1,6 +1,6 @@
 pub type UserId = i64;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct User {
     pub id: UserId,
     pub timezone: chrono_tz::Tz,
