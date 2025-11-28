@@ -6,7 +6,14 @@ use async_trait::async_trait;
 use nadoeda_delivery_scheduler::DeliveryReminderScheduler;
 use nadoeda_models::reminder::Reminder;
 use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
-use nadoeda_storage::{sqlite::{reminder_storage::SqliteReminderStorage, sqlx::SqlitePool}, ReminderStorage};
+use nadoeda_storage::{
+    ReminderStorage,
+    sqlite::{
+        reminder_storage::SqliteReminderStorage,
+        sqlx::SqlitePool,
+        user_storage::{self, SqliteUserInfoStorage},
+    },
+};
 use nadoeda_telegram::{TelegramInteractionInterface, teloxide};
 
 struct PrinterDeliveryChannel;
@@ -22,8 +29,13 @@ impl ReminderDeliveryChannel for PrinterDeliveryChannel {
 async fn main() {
     pretty_env_logger::init();
 
-    let sqlite_pool = SqlitePool::connect("sqlite:///tmp/nadoeda.db").await.expect("Error creating SQLite pool");
-    let storage: Arc<SqliteReminderStorage> = Arc::new(SqliteReminderStorage::new(sqlite_pool.clone()));
+    let sqlite_pool = SqlitePool::connect("sqlite:///tmp/nadoeda.db")
+        .await
+        .expect("Error creating SQLite pool");
+    let storage: Arc<SqliteReminderStorage> =
+        Arc::new(SqliteReminderStorage::new(sqlite_pool.clone()));
+    let user_storage: Arc<SqliteUserInfoStorage> =
+        Arc::new(SqliteUserInfoStorage::new(sqlite_pool.clone()));
     let scheduler = Arc::new(DeliveryReminderScheduler::new(Arc::new(
         PrinterDeliveryChannel,
     )));
@@ -32,9 +44,10 @@ async fn main() {
 
     let interface_task = tokio::spawn({
         let storage = storage.clone();
+        let user_storage = user_storage.clone();
         let scheduler = scheduler.clone();
         let bot = bot.clone();
-        async move { TelegramInteractionInterface::start(bot, scheduler, storage).await }
+        async move { TelegramInteractionInterface::start(bot, scheduler, storage, user_storage).await }
     });
 
     interface_task.await;

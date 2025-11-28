@@ -10,7 +10,7 @@ pub use teloxide;
 use create_daily_reminder::CreatingDailyReminderState;
 use dptree::case;
 use nadoeda_scheduler::ReminderScheduler;
-use nadoeda_storage::{sqlite::reminder_storage::SqliteReminderStorage, ReminderStorage};
+use nadoeda_storage::{sqlite::{reminder_storage::SqliteReminderStorage, user_storage::SqliteUserInfoStorage}, ReminderStorage};
 use std::sync::Arc;
 use teloxide::{
     dispatching::dialogue, dispatching::dialogue::InMemStorage, macros::BotCommands, prelude::*,
@@ -46,6 +46,7 @@ impl TelegramInteractionInterface {
         bot: teloxide::Bot,
         scheduler: Arc<dyn ReminderScheduler>,
         reminder_storage: Arc<SqliteReminderStorage>,
+        user_storage: Arc<SqliteUserInfoStorage>
     ) {
         log::info!("Starting Telegram UI.");
 
@@ -72,7 +73,8 @@ impl TelegramInteractionInterface {
             .dependencies(dptree::deps![
                 InMemStorage::<GlobalState>::new(),
                 scheduler,
-                reminder_storage
+                reminder_storage,
+                user_storage
             ])
             .enable_ctrlc_handler()
             .build()
