@@ -24,6 +24,7 @@ use teloxide::{
 use util::AuthInfoInjector;
 
 type GlobalDialogue = Dialogue<GlobalState, InMemStorage<GlobalState>>;
+type AuthenticatedDialogue = Dialogue<AuthenticatedActionState, InMemStorage<AuthenticatedActionState>>;
 type HandlerResult = anyhow::Result<()>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -71,6 +72,7 @@ impl TelegramInteractionInterface {
             .branch(
                 case![GlobalState::AuthenticatedV2(auth, state)]
                     .inject_auth_and_state::<AuthenticatedActionState>()
+                    .enter_dialogue::<Update, InMemStorage<AuthenticatedActionState>, AuthenticatedActionState>()
                     .branch(create_daily_reminder::schema())
                     .branch(edit_reminders::schema()),
             )
@@ -81,6 +83,7 @@ impl TelegramInteractionInterface {
         Dispatcher::builder(bot, schema)
             .dependencies(dptree::deps![
                 InMemStorage::<GlobalState>::new(),
+                InMemStorage::<AuthenticatedActionState>::new(),
                 scheduler,
                 reminder_storage,
                 user_storage
