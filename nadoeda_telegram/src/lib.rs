@@ -1,7 +1,10 @@
+mod authenticate_user;
 mod create_daily_reminder;
 mod edit_reminders;
-mod authenticate_user;
 mod util;
+
+#[cfg(test)]
+mod test_utils;
 
 use authenticate_user::AuthenticationState;
 use nadoeda_models::user::{User, UserId};
@@ -10,11 +13,15 @@ pub use teloxide;
 use create_daily_reminder::CreatingDailyReminderState;
 use dptree::case;
 use nadoeda_scheduler::ReminderScheduler;
-use nadoeda_storage::{sqlite::{reminder_storage::SqliteReminderStorage, user_storage::SqliteUserInfoStorage}, ReminderStorage};
+use nadoeda_storage::{
+    ReminderStorage,
+    sqlite::{reminder_storage::SqliteReminderStorage, user_storage::SqliteUserInfoStorage},
+};
 use std::sync::Arc;
 use teloxide::{
     dispatching::dialogue, dispatching::dialogue::InMemStorage, macros::BotCommands, prelude::*,
 };
+use util::AuthInfoInjector;
 
 type GlobalDialogue = Dialogue<GlobalState, InMemStorage<GlobalState>>;
 type HandlerResult = anyhow::Result<()>;
@@ -28,15 +35,13 @@ enum GlobalState {
     Unauthenticated,
     Authenticating(AuthenticationState),
     AuthenticatedV2(AuthenticationInfo, AuthenticatedActionState),
-    Authenticated(AuthenticationInfo),
-    CreatingDailyReminder(AuthenticationInfo, CreatingDailyReminderState),
 }
 
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 enum AuthenticatedActionState {
     #[default]
     Idle,
-    CreatingDailyReminnder(CreatingDailyReminderState)
+    CreatingDailyReminder(CreatingDailyReminderState),
 }
 
 pub struct TelegramInteractionInterface;
@@ -46,7 +51,7 @@ impl TelegramInteractionInterface {
         bot: teloxide::Bot,
         scheduler: Arc<dyn ReminderScheduler>,
         reminder_storage: Arc<SqliteReminderStorage>,
-        user_storage: Arc<SqliteUserInfoStorage>
+        user_storage: Arc<SqliteUserInfoStorage>,
     ) {
         log::info!("Starting Telegram UI.");
 
@@ -63,9 +68,13 @@ impl TelegramInteractionInterface {
 
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(cancel_handler)
+            .branch(
+                case![GlobalState::AuthenticatedV2(auth, state)]
+                    .inject_auth_and_state::<AuthenticatedActionState>()
+                    .branch(create_daily_reminder::schema())
+                    .branch(edit_reminders::schema()),
+            )
             .branch(authenticate_user::schema())
-            .branch(create_daily_reminder::schema())
-            .branch(edit_reminders::schema())
             .branch(invalid_state_handler)
             .branch(invalid_callback_handler);
 

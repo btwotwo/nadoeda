@@ -16,8 +16,8 @@ use teloxide::{Bot, types::Message};
 
 use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
 
-use crate::AuthenticationInfo;
 use crate::util::AuthInfoInjector;
+use crate::{AuthenticatedActionState, AuthenticationInfo};
 
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
@@ -48,10 +48,9 @@ async fn create_daily_reminder_start(
         .await?;
 
     dialogue
-        .update(GlobalState::CreatingDailyReminder(
-            auth,
+        .update(GlobalState::AuthenticatedV2(auth, AuthenticatedActionState::CreatingDailyReminder(
             CreatingDailyReminderState::WaitingForReminderText,
-        ))
+        )))
         .await?;
 
     Ok(())
@@ -70,15 +69,13 @@ async fn receive_reminder_text(
             );
             bot.send_message(msg.chat.id, message).await?;
             dialogue
-                .update(GlobalState::CreatingDailyReminder(
-                    AuthenticationInfo(User {
-                        id: 0,
-                        tg_chat_id: None,
-                        timezone: chrono_tz::Tz::Europe__Prague,
-                    }),
-                    CreatingDailyReminderState::WaitingForFiringTime {
-                        text: text.to_string(),
-                    },
+                .update(GlobalState::AuthenticatedV2(
+                    auth,
+                    AuthenticatedActionState::CreatingDailyReminder(
+                        CreatingDailyReminderState::WaitingForFiringTime {
+                            text: text.to_string(),
+                        },
+                    ),
                 ))
                 .await?;
         }
@@ -115,16 +112,14 @@ If you want to change something, please type /cancel and start over",
             let keyboard = InlineKeyboardMarkup::new(vec![vec![ok_button]]);
 
             dialogue
-                .update(GlobalState::CreatingDailyReminder(
-                    AuthenticationInfo(User {
-                        id: 0,
-                        tg_chat_id: None,
-                        timezone: chrono_tz::Tz::Europe__Prague,
-                    }),
-                    CreatingDailyReminderState::WaitingForConfirmation {
-                        text,
-                        firing_time: time,
-                    },
+                .update(GlobalState::AuthenticatedV2(
+                    auth,
+                    AuthenticatedActionState::CreatingDailyReminder(
+                        CreatingDailyReminderState::WaitingForConfirmation {
+                            text,
+                            firing_time: time,
+                        },
+                    ),
                 ))
                 .await?;
 
@@ -178,15 +173,18 @@ async fn confirm_reminder(
 pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
     dptree::entry()
         .branch(
-            Update::filter_message()
-                .branch(teloxide::filter_command::<GlobalCommand, _>().branch(
-                    case![GlobalState::Authenticated(auth)].branch(
-                        case![GlobalCommand::CreateReminder].endpoint(create_daily_reminder_start),
-                    ),
-                ))
+            case![AuthenticatedActionState::Idle].branch(
+                Update::filter_message().branch(
+                    teloxide::filter_command::<GlobalCommand, _>()
+                        .branch(case![GlobalCommand::CreateReminder])
+                        .endpoint(create_daily_reminder_start),
+                ),
+            ),
+        )
+        .branch(
+            case![AuthenticatedActionState::CreatingDailyReminder(x)]
                 .branch(
-                    case![GlobalState::CreatingDailyReminder(auth, x)]
-                        .inject_auth_and_state::<CreatingDailyReminderState>()
+                    Update::filter_message()
                         .branch(
                             case![CreatingDailyReminderState::WaitingForReminderText]
                                 .endpoint(receive_reminder_text),
@@ -195,21 +193,50 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
                             case![CreatingDailyReminderState::WaitingForFiringTime { text }]
                                 .endpoint(receive_firing_time),
                         ),
-                ),
-        )
-        .branch(
-            Update::filter_callback_query().branch(
-                case![GlobalState::CreatingDailyReminder(auth, x)]
-                    .inject_auth_and_state::<CreatingDailyReminderState>()
-                    .branch(
+                )
+                .branch(
+                    Update::filter_callback_query().branch(
                         case![CreatingDailyReminderState::WaitingForConfirmation {
                             text,
                             firing_time
                         }]
                         .endpoint(confirm_reminder),
                     ),
-            ),
+                ),
         )
+    // dptree::entry()
+    //     .branch(
+    //         Update::filter_message()
+    //             .branch(teloxide::filter_command::<GlobalCommand, _>().branch(
+    //                 case![AuthenticatedActionState::Idle].branch(
+    //                     case![GlobalCommand::CreateReminder].endpoint(create_daily_reminder_start),
+    //                 ),
+    //             ))
+    //             .branch(
+    //                 case![AuthenticatedActionState::CreatingDailyReminder(x)]
+    //                     .branch(
+    //                         case![CreatingDailyReminderState::WaitingForReminderText]
+    //                             .endpoint(receive_reminder_text),
+    //                     )
+    //                     .branch(
+    //                         case![CreatingDailyReminderState::WaitingForFiringTime { text }]
+    //                             .endpoint(receive_firing_time),
+    //                     ),
+    //             ),
+    //     )
+    //     .branch(
+    //         Update::filter_callback_query().branch(
+    //             case![GlobalState::CreatingDailyReminder(auth, x)]
+    //                 .inject_auth_and_state::<CreatingDailyReminderState>()
+    //                 .branch(
+    //                     case![CreatingDailyReminderState::WaitingForConfirmation {
+    //                         text,
+    //                         firing_time
+    //                     }]
+    //                     .endpoint(confirm_reminder),
+    //                 ),
+    //         ),
+    //     );
 }
 
 #[cfg(test)]
@@ -226,46 +253,19 @@ mod tests {
     use teloxide::{
         dispatching::dialogue::{self, InMemStorage},
         dptree::deps,
+        payloads::CreateForumTopic,
     };
     use teloxide_tests::{MockBot, MockMessageText};
 
+    use crate::test_utils::*;
+
     use super::*;
-
-    struct NoopReminderScheduler;
-    #[async_trait]
-    impl ReminderScheduler for NoopReminderScheduler {
-        async fn schedule_reminder(
-            &self,
-            schedule_request: ScheduleRequest,
-        ) -> anyhow::Result<ScheduledReminder> {
-            Ok(ScheduledReminder::new(1))
-        }
-
-        async fn cancel_reminder(
-            &self,
-            scheduled_reminder: &ScheduledReminder,
-        ) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        async fn acknowledge_reminder(
-            &self,
-            scheduled_reminder: &ScheduledReminder,
-        ) -> anyhow::Result<()> {
-            Ok(())
-        }
-
-        async fn confirm_reminder(
-            &self,
-            scheduled_reminder: &ScheduledReminder,
-        ) -> anyhow::Result<()> {
-            Ok(())
-        }
-    }
 
     #[sqlite::sqlx::test]
     async fn test(pool: Pool<Sqlite>) {
-        let reminder_storage = Arc::new(SqliteReminderStorage::new(pool));
+        let reminder_storage = storage(pool.clone());
+        let user_storage = storage(pool.clone());
+
         let scheduler: Arc<dyn ReminderScheduler> = Arc::new(NoopReminderScheduler);
         let schema =
             dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>().branch(schema());
@@ -273,34 +273,43 @@ mod tests {
 
         bot.dependencies(deps![
             reminder_storage,
+            user_storage,
             scheduler,
             InMemStorage::<GlobalState>::new(),
-            GlobalState::Authenticated(AuthenticationInfo(User {
-                id: 0,
-                tg_chat_id: Some(0),
-                timezone: chrono_tz::Tz::Europe__Prague
-            }))
-        ]);
-
-        bot.set_state(GlobalState::CreatingDailyReminder(
             AuthenticationInfo(User {
-                id: 0,
-                tg_chat_id: Some(0),
-                timezone: chrono_tz::Tz::Europe__Prague,
-            }),
-            CreatingDailyReminderState::WaitingForReminderText,
-        ))
-        .await;
-
-        bot.dispatch_and_check_state(GlobalState::CreatingDailyReminder( 
-           AuthenticationInfo(User {
                 id: 0,
                 tg_chat_id: None,
                 timezone: chrono_tz::Tz::Europe__Prague,
             }),
-            CreatingDailyReminderState::WaitingForFiringTime {
-                text: "New Reminder".to_string(),
-            },
+            AuthenticatedActionState::CreatingDailyReminder(
+                CreatingDailyReminderState::WaitingForReminderText
+            ),
+            CreatingDailyReminderState::WaitingForReminderText
+        ]);
+
+        bot.set_state(GlobalState::AuthenticatedV2(
+            AuthenticationInfo(User {
+                id: 0,
+                tg_chat_id: None,
+                timezone: chrono_tz::Tz::Europe__Prague,
+            }),
+            AuthenticatedActionState::CreatingDailyReminder(
+                CreatingDailyReminderState::WaitingForReminderText,
+            ),
+        ))
+        .await;
+
+        bot.dispatch_and_check_state(GlobalState::AuthenticatedV2(
+            AuthenticationInfo(User {
+                id: 0,
+                tg_chat_id: None,
+                timezone: chrono_tz::Tz::Europe__Prague,
+            }),
+            AuthenticatedActionState::CreatingDailyReminder(
+                CreatingDailyReminderState::WaitingForFiringTime {
+                    text: "New Reminder".to_string(),
+                },
+            ),
         ))
         .await;
     }

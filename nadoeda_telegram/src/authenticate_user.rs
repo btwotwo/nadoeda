@@ -73,7 +73,8 @@ pub async fn get_user_timezone(
                     })
                     .await?;
 
-                bot.send_message(msg.chat.id, "Timezone received. Welcome aboard.").await?;
+                bot.send_message(msg.chat.id, "Timezone received. Welcome aboard.")
+                    .await?;
 
                 dialogue
                     .update(GlobalState::AuthenticatedV2(
@@ -107,32 +108,18 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 mod tests {
     use std::sync::Arc;
 
-    use crate::AuthenticationInfo;
+    use crate::{AuthenticationInfo, test_utils::*};
 
     use super::*;
 
     use nadoeda_models::chrono_tz;
-    use nadoeda_storage::{
-        NewUser, UserInfoStorage,
-        sqlite::{
-            reminder_storage::SqliteReminderStorage,
-            user_storage::{self, SqliteUserInfoStorage},
-        },
-    };
+    use nadoeda_storage::NewUser;
     use sqlx::{Pool, Sqlite};
     use teloxide::{
         dispatching::dialogue::{self, InMemStorage},
         dptree::deps,
     };
     use teloxide_tests::{MockBot, MockMessageText};
-
-    fn storage(pool: Pool<Sqlite>) -> Arc<SqliteReminderStorage> {
-        Arc::new(SqliteReminderStorage::new(pool))
-    }
-
-    fn user_storage(pool: Pool<Sqlite>) -> Arc<SqliteUserInfoStorage> {
-        Arc::new(SqliteUserInfoStorage::new(pool))
-    }
 
     #[sqlx::test(migrations = "../nadoeda_storage/migrations")]
     async fn given_user_not_exist_should_ask_for_info(pool: Pool<Sqlite>) {
