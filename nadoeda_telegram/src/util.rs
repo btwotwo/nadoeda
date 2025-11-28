@@ -1,6 +1,5 @@
-use std::process::Output;
 
-use teloxide::dptree::{self, Handler, HandlerDescription, di::Injectable};
+use teloxide::dptree::{Handler, HandlerDescription};
 
 use crate::AuthenticationInfo;
 

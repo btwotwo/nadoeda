@@ -1,25 +1,20 @@
-use std::error::Error;
 use std::sync::Arc;
 
 use chrono::NaiveTime;
 use dptree::case;
-use nadoeda_models::chrono_tz;
-use nadoeda_models::user::User;
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest};
 use nadoeda_storage::sqlite::reminder_storage::SqliteReminderStorage;
 use nadoeda_storage::{NewReminder, ReminderStorage};
 use teloxide::dispatching::UpdateHandler;
-use teloxide::dptree::filter_map;
 use teloxide::prelude::*;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, types::Message};
 
-use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
+use nadoeda_models::reminder::ReminderFireTime;
 
-use crate::util::AuthInfoInjector;
 use crate::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo};
 
-use super::{GlobalCommand, GlobalState, HandlerResult};
+use super::{GlobalCommand, HandlerResult};
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub(super) enum CreatingDailyReminderState {

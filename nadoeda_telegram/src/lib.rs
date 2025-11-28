@@ -7,7 +7,7 @@ mod util;
 mod test_utils;
 
 use authenticate_user::AuthenticationState;
-use nadoeda_models::user::{User, UserId};
+use nadoeda_models::user::User;
 pub use teloxide;
 
 use create_daily_reminder::CreatingDailyReminderState;

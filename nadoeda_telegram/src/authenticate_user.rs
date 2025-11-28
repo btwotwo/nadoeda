@@ -1,20 +1,18 @@
 use std::sync::Arc;
 
-use chrono::TimeZone;
 use dptree::case;
 use nadoeda_models::chrono_tz;
-use nadoeda_models::user::User;
 use nadoeda_storage::sqlite::user_storage::SqliteUserInfoStorage;
 use nadoeda_storage::{NewUser, UserInfoStorage};
 use teloxide::prelude::*;
 use teloxide::{
     dispatching::{UpdateFilterExt, UpdateHandler},
-    dptree, handler,
+    dptree,
     types::Update,
 };
 
 use crate::{
-    AuthenticatedActionState, AuthenticationInfo, GlobalCommand, GlobalDialogue, GlobalState,
+    AuthenticatedActionState, AuthenticationInfo, GlobalDialogue, GlobalState,
     HandlerResult,
 };
 
