@@ -110,7 +110,7 @@ mod tests {
 
     use super::*;
 
-    use nadoeda_models::chrono_tz;
+    use nadoeda_models::{chrono_tz, user::User};
     use nadoeda_storage::NewUser;
     use sqlx::{Pool, Sqlite};
     use teloxide::{

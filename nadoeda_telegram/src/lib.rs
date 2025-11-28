@@ -17,14 +17,18 @@ use nadoeda_storage::{
     ReminderStorage,
     sqlite::{reminder_storage::SqliteReminderStorage, user_storage::SqliteUserInfoStorage},
 };
-use std::sync::Arc;
+use std::{process::Output, sync::Arc};
 use teloxide::{
-    dispatching::dialogue, dispatching::dialogue::InMemStorage, macros::BotCommands, prelude::*,
+    dispatching::dialogue::{self, GetChatId, InMemStorage},
+    dptree::HandlerDescription,
+    macros::BotCommands,
+    prelude::*,
 };
-use util::AuthInfoInjector;
+use util::HandlerExtensions;
 
 type GlobalDialogue = Dialogue<GlobalState, InMemStorage<GlobalState>>;
-type AuthenticatedDialogue = Dialogue<AuthenticatedActionState, InMemStorage<AuthenticatedActionState>>;
+type AuthenticatedDialogue =
+    Dialogue<AuthenticatedActionState, InMemStorage<AuthenticatedActionState>>;
 type HandlerResult = anyhow::Result<()>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -56,29 +60,23 @@ impl TelegramInteractionInterface {
     ) {
         log::info!("Starting Telegram UI.");
 
-        let cancel_handler = Update::filter_message().branch(
-            teloxide::filter_command::<GlobalCommand, _>()
-                .branch(case![GlobalCommand::Cancel].endpoint(cancel)),
-        );
-
         let invalid_state_handler =
             Update::filter_message().branch(dptree::endpoint(invalid_state));
 
-        let invalid_callback_handler =
-            Update::filter_callback_query().branch(dptree::endpoint(invalid_query));
-
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
-            .branch(cancel_handler)
             .branch(
                 case![GlobalState::AuthenticatedV2(auth, state)]
                     .inject_auth_and_state::<AuthenticatedActionState>()
                     .enter_dialogue::<Update, InMemStorage<AuthenticatedActionState>, AuthenticatedActionState>()
+                    .branch(get_cancel_handler::<AuthenticatedActionState>())
                     .branch(create_daily_reminder::schema())
-                    .branch(edit_reminders::schema()),
+                    .branch(edit_reminders::schema())
+                    .branch(get_invalid_callback_handler::<AuthenticatedActionState>())
             )
             .branch(authenticate_user::schema())
+            .branch(get_cancel_handler::<GlobalState>())
             .branch(invalid_state_handler)
-            .branch(invalid_callback_handler);
+            .branch(get_invalid_callback_handler::<GlobalState>());
 
         Dispatcher::builder(bot, schema)
             .dependencies(dptree::deps![
@@ -95,14 +93,35 @@ impl TelegramInteractionInterface {
     }
 }
 
-async fn cancel(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResult {
+fn get_invalid_callback_handler<S>()
+-> Handler<'static, Result<(), anyhow::Error>, teloxide::dispatching::DpHandlerDescription>
+where
+    S: Send + Sync + Clone + 'static,
+{
+    Update::filter_callback_query().branch(dptree::endpoint(invalid_query::<S>))
+}
+
+fn get_cancel_handler<S>()
+-> Handler<'static, Result<(), anyhow::Error>, teloxide::dispatching::DpHandlerDescription>
+where
+    S: Send + Sync + Clone + 'static,
+{
+    Update::filter_message().branch(
+        teloxide::filter_command::<GlobalCommand, _>()
+            .branch(case![GlobalCommand::Cancel].endpoint(cancel::<S>)),
+    )
+}
+async fn cancel<S>(bot: Bot, dialogue: Dialogue<S, InMemStorage<S>>, msg: Message) -> HandlerResult
+where
+    S: Send + Sync + Clone + 'static,
+{
     bot.send_message(msg.chat.id, "Cancelled current operation.")
         .await?;
     dialogue.exit().await?;
     Ok(())
 }
 
-async fn invalid_state(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> HandlerResult {
+async fn invalid_state(bot: Bot, msg: Message) -> HandlerResult {
     bot.send_message(
         msg.chat.id,
         "Unable to handle the message. Please try again or use /cancel to stop current operation.",
@@ -111,7 +130,14 @@ async fn invalid_state(bot: Bot, dialogue: GlobalDialogue, msg: Message) -> Hand
     Ok(())
 }
 
-async fn invalid_query(bot: Bot, dialogue: GlobalDialogue, query: CallbackQuery) -> HandlerResult {
+async fn invalid_query<S>(
+    bot: Bot,
+    dialogue: Dialogue<S, InMemStorage<S>>,
+    query: CallbackQuery,
+) -> HandlerResult
+where
+    S: Send + Clone + 'static,
+{
     bot.answer_callback_query(query.id).await?;
     bot.send_message(
         dialogue.chat_id(),

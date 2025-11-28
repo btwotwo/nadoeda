@@ -3,7 +3,7 @@ use teloxide::dptree::{Handler, HandlerDescription};
 
 use crate::AuthenticationInfo;
 
-pub trait AuthInfoInjector<'a, Output, Descr>
+pub trait HandlerExtensions<'a, Output, Descr>
 where
     Output: 'a,
     Descr: HandlerDescription,
@@ -13,7 +13,7 @@ where
         TState: Clone + Send + Sync + 'static;
 }
 
-impl<'a, Output, Descr> AuthInfoInjector<'a, Output, Descr> for Handler<'a, Output, Descr>
+impl<'a, Output, Descr> HandlerExtensions<'a, Output, Descr> for Handler<'a, Output, Descr>
 where
     Output: 'a,
     Descr: HandlerDescription,

@@ -143,17 +143,18 @@ async fn confirm_reminder(
         user_id: 0,
     };
 
-    let reminder = storage.insert(reminder).await?;
+    // let reminder = storage.insert(reminder).await?;
     bot.answer_callback_query(query.id).await?;
 
-    log::info!("Created reminder with id {}", reminder.id);
+    // log::info!("Created reminder with id {}", reminder.id);
 
-    scheduler
-        .schedule_reminder(ScheduleRequest::new(reminder))
-        .await?;
+    // scheduler
+    //     .schedule_reminder(ScheduleRequest::new(reminder))
+    //     .await?;
 
     bot.send_message(dialogue.chat_id(), "Reminder saved and scheduled.")
         .await?;
+    
 
     dialogue.exit().await?;
     Ok(())
