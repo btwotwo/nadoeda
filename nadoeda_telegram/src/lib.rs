@@ -29,6 +29,7 @@ use util::HandlerExtensions;
 type GlobalDialogue = Dialogue<GlobalState, InMemStorage<GlobalState>>;
 type AuthenticatedDialogue =
     Dialogue<AuthenticatedActionState, InMemStorage<AuthenticatedActionState>>;
+
 type HandlerResult = anyhow::Result<()>;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]

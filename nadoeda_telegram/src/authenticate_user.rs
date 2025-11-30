@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::sync::Arc;
 
 use dptree::case;
@@ -5,6 +6,7 @@ use nadoeda_models::chrono_tz;
 use nadoeda_storage::sqlite::user_storage::SqliteUserInfoStorage;
 use nadoeda_storage::{NewUser, UserInfoStorage};
 use sqlx::Result;
+use teloxide::dispatching::dialogue::InMemStorageError;
 use teloxide::prelude::*;
 use teloxide::{
     dispatching::{UpdateFilterExt, UpdateHandler},
@@ -12,15 +14,40 @@ use teloxide::{
     types::Update,
 };
 
+use anyhow::anyhow;
+
 use crate::{
     AuthenticatedActionState, AuthenticationInfo, GlobalDialogue, GlobalState, HandlerResult,
 };
+use thiserror::Error;
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub(super) enum AuthenticationState {
     #[default]
     Start,
     WaitingForTimezone,
+}
+
+#[derive(Debug, Error)]
+enum AuthError {
+    #[error(transparent)]
+    Telegram(#[from] teloxide::RequestError),
+    
+    #[error(transparent)]
+    StorageError(#[from] teloxide::dispatching::dialogue::InMemStorageError),
+    
+    #[error(transparent)]
+    Common(#[from] anyhow::Error)
+}
+
+impl Clone for AuthError {
+    fn clone(&self) -> Self {
+        match self {
+            Self::Telegram(arg0) => Self::Telegram(arg0.clone()),
+            Self::StorageError(_) => Self::StorageError(InMemStorageError::DialogueNotFound),
+            Self::Common(error) => Self::Common(anyhow!(error.to_string())),
+        }
+    }
 }
 
 async fn try_authenticate(
@@ -99,7 +126,7 @@ async fn middleware(
     state: GlobalState,
     msg: Message,
     user_store: Arc<SqliteUserInfoStorage>,
-) -> anyhow::Result<GlobalState> {
+) -> Result<GlobalState, AuthError> {
     match state {
         GlobalState::Unauthenticated => {
             try_authenticate(bot, dialogue.clone(), msg, user_store).await?;
@@ -115,11 +142,12 @@ async fn middleware(
 }
 
 pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
-    dptree::entry().map_async(middleware).filter_map(
-        |res: Result<GlobalState, anyhow::Error>| async {
-            Some(GlobalState::Unauthenticated)
-        },
-    )
+    Update::filter_message()
+        .map_async(middleware)
+        .filter_map(|res: Result<GlobalState, AuthError>| {
+            res.ok()
+        })
+        .inspect(|s: GlobalState| {log::info!("Global state: {s:?}")})
     // Update::filter_message()
     //     .branch(case![GlobalState::Unauthenticated].map_async(try_authenticate))
     //     .branch(
