@@ -64,7 +64,8 @@ impl TelegramInteractionInterface {
             Update::filter_message().branch(dptree::endpoint(invalid_state));
 
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
-            .branch(
+            .chain(authenticate_user::schema())
+            .chain(
                 case![GlobalState::AuthenticatedV2(auth, state)]
                     .inject_auth_and_state::<AuthenticatedActionState>()
                     .enter_dialogue::<Update, InMemStorage<AuthenticatedActionState>, AuthenticatedActionState>()
@@ -73,7 +74,6 @@ impl TelegramInteractionInterface {
                     .branch(edit_reminders::schema())
                     .branch(get_invalid_callback_handler::<AuthenticatedActionState>())
             )
-            .branch(authenticate_user::schema())
             .branch(get_cancel_handler::<GlobalState>())
             .branch(invalid_state_handler)
             .branch(get_invalid_callback_handler::<GlobalState>());

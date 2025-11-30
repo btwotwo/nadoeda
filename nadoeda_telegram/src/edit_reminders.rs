@@ -9,6 +9,8 @@ use teloxide::utils::markdown;
 
 use nadoeda_models::reminder::Reminder;
 
+use crate::AuthenticatedActionState;
+
 use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
 
 #[derive(Clone, Default)]
@@ -54,11 +56,11 @@ Edit \\- /edit\\_{2}",
 
 pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
     dptree::entry().branch(
-        Update::filter_message().branch(
-            teloxide::filter_command::<GlobalCommand, _>().branch(
-                case![GlobalState::Unauthenticated]
-                    .branch(case![GlobalCommand::ListReminders].endpoint(list_reminders)),
-            ),
-        ),
+        case![AuthenticatedActionState::Idle].branch(
+            Update::filter_message().branch(
+                teloxide::filter_command::<GlobalCommand, _>()
+                    .branch(case![GlobalCommand::ListReminders].endpoint(list_reminders))
+            )
+        )
     )
 }

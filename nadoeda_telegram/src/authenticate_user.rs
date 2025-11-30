@@ -4,6 +4,7 @@ use dptree::case;
 use nadoeda_models::chrono_tz;
 use nadoeda_storage::sqlite::user_storage::SqliteUserInfoStorage;
 use nadoeda_storage::{NewUser, UserInfoStorage};
+use sqlx::Result;
 use teloxide::prelude::*;
 use teloxide::{
     dispatching::{UpdateFilterExt, UpdateHandler},
@@ -12,8 +13,7 @@ use teloxide::{
 };
 
 use crate::{
-    AuthenticatedActionState, AuthenticationInfo, GlobalDialogue, GlobalState,
-    HandlerResult,
+    AuthenticatedActionState, AuthenticationInfo, GlobalDialogue, GlobalState, HandlerResult,
 };
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
@@ -93,13 +93,40 @@ pub async fn get_user_timezone(
     Ok(())
 }
 
+async fn middleware(
+    bot: Bot,
+    dialogue: GlobalDialogue,
+    state: GlobalState,
+    msg: Message,
+    user_store: Arc<SqliteUserInfoStorage>,
+) -> anyhow::Result<GlobalState> {
+    match state {
+        GlobalState::Unauthenticated => {
+            try_authenticate(bot, dialogue.clone(), msg, user_store).await?;
+        }
+        GlobalState::Authenticating(AuthenticationState::WaitingForTimezone) => {
+            get_user_timezone(bot, dialogue.clone(), msg, user_store).await?;
+        }
+        _ => {}
+    };
+
+    let state = dialogue.get_or_default().await?;
+    Ok(state)
+}
+
 pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
-    Update::filter_message()
-        .branch(case![GlobalState::Unauthenticated].endpoint(try_authenticate))
-        .branch(
-            case![GlobalState::Authenticating(x)]
-                .branch(case![AuthenticationState::WaitingForTimezone].endpoint(get_user_timezone)),
-        )
+    dptree::entry().map_async(middleware).filter_map(
+        |res: Result<GlobalState, anyhow::Error>| async {
+            Some(GlobalState::Unauthenticated)
+        },
+    )
+    // Update::filter_message()
+    //     .branch(case![GlobalState::Unauthenticated].map_async(try_authenticate))
+    //     .branch(
+    //         case![GlobalState::Authenticating(x)].branch(
+    //             case![AuthenticationState::WaitingForTimezone].map_async(get_user_timezone),
+    //         ),
+    //     )
 }
 
 #[cfg(test)]

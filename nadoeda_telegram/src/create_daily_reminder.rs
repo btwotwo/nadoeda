@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use chrono::NaiveTime;
+use chrono::TimeZone;
 use dptree::case;
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest};
 use nadoeda_storage::sqlite::reminder_storage::SqliteReminderStorage;
@@ -30,14 +31,9 @@ pub(super) enum CreatingDailyReminderState {
     },
 }
 
-async fn create_daily_reminder_start(
-    bot: Bot,
-    dialogue: AuthenticatedDialogue,
-    auth: AuthenticationInfo,
-    msg: Message,
-) -> HandlerResult {
+async fn create_daily_reminder_start(bot: Bot, dialogue: AuthenticatedDialogue) -> HandlerResult {
     bot.send_message(
-            msg.chat.id,
+        dialogue.chat_id(),
             "Creating a new daily reminder! Please input reminder text. If you want to cancel, use the /cancel command.",
         )
         .await?;
@@ -53,7 +49,6 @@ async fn create_daily_reminder_start(
 async fn receive_reminder_text(
     bot: Bot,
     dialogue: AuthenticatedDialogue,
-    auth: AuthenticationInfo,
     msg: Message,
 ) -> HandlerResult {
     match msg.text() {
@@ -83,7 +78,6 @@ async fn receive_firing_time(
     bot: Bot,
     dialogue: AuthenticatedDialogue,
     text: String,
-    auth: AuthenticationInfo,
     msg: Message,
 ) -> HandlerResult {
     match msg
@@ -122,6 +116,7 @@ If you want to change something, please type /cancel and start over",
                 msg.chat.id,
                 "Could not parse time. Please send time in the following format: *13:00*",
             )
+            .parse_mode(teloxide::types::ParseMode::MarkdownV2)
             .await?;
         }
     }
@@ -137,24 +132,25 @@ async fn confirm_reminder(
     query: CallbackQuery,
     scheduler: Arc<dyn ReminderScheduler>,
 ) -> HandlerResult {
+    let fire_at = ReminderFireTime::new(firing_time).with_timezone(auth.0.timezone).unwrap();
+    
     let reminder = NewReminder {
         text,
-        fire_at: ReminderFireTime::new(firing_time),
-        user_id: 0,
+        fire_at,
+        user_id: auth.0.id,
     };
 
-    // let reminder = storage.insert(reminder).await?;
+    let reminder = storage.insert(reminder).await?;
     bot.answer_callback_query(query.id).await?;
 
-    // log::info!("Created reminder with id {}", reminder.id);
+    log::info!("Created reminder with id {}", reminder.id);
 
-    // scheduler
-    //     .schedule_reminder(ScheduleRequest::new(reminder))
-    //     .await?;
+    scheduler
+        .schedule_reminder(ScheduleRequest::new(reminder))
+        .await?;
 
     bot.send_message(dialogue.chat_id(), "Reminder saved and scheduled.")
         .await?;
-    
 
     dialogue.exit().await?;
     Ok(())
@@ -194,39 +190,6 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
                     ),
                 ),
         )
-    // dptree::entry()
-    //     .branch(
-    //         Update::filter_message()
-    //             .branch(teloxide::filter_command::<GlobalCommand, _>().branch(
-    //                 case![AuthenticatedActionState::Idle].branch(
-    //                     case![GlobalCommand::CreateReminder].endpoint(create_daily_reminder_start),
-    //                 ),
-    //             ))
-    //             .branch(
-    //                 case![AuthenticatedActionState::CreatingDailyReminder(x)]
-    //                     .branch(
-    //                         case![CreatingDailyReminderState::WaitingForReminderText]
-    //                             .endpoint(receive_reminder_text),
-    //                     )
-    //                     .branch(
-    //                         case![CreatingDailyReminderState::WaitingForFiringTime { text }]
-    //                             .endpoint(receive_firing_time),
-    //                     ),
-    //             ),
-    //     )
-    //     .branch(
-    //         Update::filter_callback_query().branch(
-    //             case![GlobalState::CreatingDailyReminder(auth, x)]
-    //                 .inject_auth_and_state::<CreatingDailyReminderState>()
-    //                 .branch(
-    //                     case![CreatingDailyReminderState::WaitingForConfirmation {
-    //                         text,
-    //                         firing_time
-    //                     }]
-    //                     .endpoint(confirm_reminder),
-    //                 ),
-    //         ),
-    //     );
 }
 
 #[cfg(test)]
