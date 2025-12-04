@@ -15,6 +15,7 @@ use teloxide::{
 };
 
 use anyhow::anyhow;
+use tokio::task::coop::consume_budget;
 
 use crate::{
     AuthenticatedActionState, AuthenticationInfo, GlobalDialogue, GlobalState, HandlerResult,
@@ -32,12 +33,12 @@ pub(super) enum AuthenticationState {
 enum AuthError {
     #[error(transparent)]
     Telegram(#[from] teloxide::RequestError),
-    
+
     #[error(transparent)]
     StorageError(#[from] teloxide::dispatching::dialogue::InMemStorageError),
-    
+
     #[error(transparent)]
-    Common(#[from] anyhow::Error)
+    Common(#[from] anyhow::Error),
 }
 
 impl Clone for AuthError {
@@ -55,7 +56,7 @@ async fn try_authenticate(
     dialogue: GlobalDialogue,
     msg: Message,
     user_store: Arc<SqliteUserInfoStorage>,
-) -> HandlerResult {
+) -> Result<bool, AuthError> {
     let user = user_store.get_by_tg_chat(msg.chat.id.0).await?;
 
     if let Some(user) = user {
@@ -68,6 +69,7 @@ async fn try_authenticate(
                 crate::AuthenticatedActionState::Idle,
             ))
             .await?;
+        Ok(true)
     } else {
         bot.send_message(msg.chat.id, "Not seen before. Send me your timezone.")
             .await?;
@@ -77,9 +79,9 @@ async fn try_authenticate(
                 AuthenticationState::WaitingForTimezone,
             ))
             .await?;
-    }
 
-    Ok(())
+        Ok(false)
+    }
 }
 
 pub async fn get_user_timezone(
@@ -126,28 +128,60 @@ async fn middleware(
     state: GlobalState,
     msg: Message,
     user_store: Arc<SqliteUserInfoStorage>,
-) -> Result<GlobalState, AuthError> {
-    match state {
+) -> Result<Option<GlobalState>, AuthError> {
+    enum ContinueState {
+        Abort,
+        UseExistingAndContinue,
+        UpdateAndContinue,
+    }
+    // user exists => update state and pass message downstream
+    // user does not exist => just update state and short-circuit
+    // right after auth => just update state and short-circuit
+    let continue_state = match state {
         GlobalState::Unauthenticated => {
-            try_authenticate(bot, dialogue.clone(), msg, user_store).await?;
+            let user_exists = try_authenticate(bot, dialogue.clone(), msg, user_store).await?;
+            if user_exists {
+                ContinueState::UpdateAndContinue
+            } else {
+                ContinueState::Abort
+            }
         }
         GlobalState::Authenticating(AuthenticationState::WaitingForTimezone) => {
             get_user_timezone(bot, dialogue.clone(), msg, user_store).await?;
+            ContinueState::Abort
         }
-        _ => {}
+        _ => ContinueState::UseExistingAndContinue,
     };
 
-    let state = dialogue.get_or_default().await?;
-    Ok(state)
+    match continue_state {
+        ContinueState::Abort => Ok(None),
+        ContinueState::UseExistingAndContinue => Ok(Some(state)),
+        ContinueState::UpdateAndContinue => {
+            let state = dialogue.get_or_default().await?;
+            Ok(Some(state))
+        }
+    }
 }
 
 pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
-    Update::filter_message()
-        .map_async(middleware)
-        .filter_map(|res: Result<GlobalState, AuthError>| {
-            res.ok()
+    dptree::entry().branch(
+        dptree::filter(|state: GlobalState| {
+            matches!(
+                state,
+                GlobalState::Unauthenticated | GlobalState::Authenticating(_)
+            )
         })
-        .inspect(|s: GlobalState| {log::info!("Global state: {s:?}")})
+        .chain(
+            Update::filter_message()
+                .map_async(middleware)
+                .filter_map(|res: Result<Option<GlobalState>, AuthError>| res.ok().flatten())
+                .inspect(|s: GlobalState| log::info!("Global state: {s:?}")),
+        ),
+    )
+    // Update::filter_message()
+    //     .map_async(middleware)
+    //     .filter_map(|res: Result<Option<GlobalState>, AuthError>| res.ok().flatten())
+    //     .inspect(|s: GlobalState| log::info!("Global state: {s:?}"))
     // Update::filter_message()
     //     .branch(case![GlobalState::Unauthenticated].map_async(try_authenticate))
     //     .branch(
