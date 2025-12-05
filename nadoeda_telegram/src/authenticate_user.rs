@@ -8,6 +8,7 @@ use nadoeda_storage::{NewUser, UserInfoStorage};
 use sqlx::Result;
 use teloxide::dispatching::dialogue::InMemStorageError;
 use teloxide::prelude::*;
+use teloxide::types::UpdateKind;
 use teloxide::{
     dispatching::{UpdateFilterExt, UpdateHandler},
     dptree,
@@ -126,7 +127,7 @@ async fn middleware(
     bot: Bot,
     dialogue: GlobalDialogue,
     state: GlobalState,
-    msg: Message,
+    update: Update,
     user_store: Arc<SqliteUserInfoStorage>,
 ) -> Result<Option<GlobalState>, AuthError> {
     enum ContinueState {
@@ -137,58 +138,34 @@ async fn middleware(
     // user exists => update state and pass message downstream
     // user does not exist => just update state and short-circuit
     // right after auth => just update state and short-circuit
-    let continue_state = match state {
+    let UpdateKind::Message(msg) = update.kind else {
+        return Ok(Some(state));
+    };
+
+    match state {
         GlobalState::Unauthenticated => {
             let user_exists = try_authenticate(bot, dialogue.clone(), msg, user_store).await?;
+
             if user_exists {
-                ContinueState::UpdateAndContinue
+                let new_state = dialogue.get_or_default().await?;
+                Ok(Some(new_state))
             } else {
-                ContinueState::Abort
+                Ok(None)
             }
         }
         GlobalState::Authenticating(AuthenticationState::WaitingForTimezone) => {
             get_user_timezone(bot, dialogue.clone(), msg, user_store).await?;
-            ContinueState::Abort
+            Ok(None)
         }
-        _ => ContinueState::UseExistingAndContinue,
-    };
-
-    match continue_state {
-        ContinueState::Abort => Ok(None),
-        ContinueState::UseExistingAndContinue => Ok(Some(state)),
-        ContinueState::UpdateAndContinue => {
-            let state = dialogue.get_or_default().await?;
-            Ok(Some(state))
-        }
+        _ => Ok(Some(state)),
     }
 }
 
 pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
-    dptree::entry().branch(
-        dptree::filter(|state: GlobalState| {
-            matches!(
-                state,
-                GlobalState::Unauthenticated | GlobalState::Authenticating(_)
-            )
-        })
-        .chain(
-            Update::filter_message()
-                .map_async(middleware)
-                .filter_map(|res: Result<Option<GlobalState>, AuthError>| res.ok().flatten())
-                .inspect(|s: GlobalState| log::info!("Global state: {s:?}")),
-        ),
-    )
-    // Update::filter_message()
-    //     .map_async(middleware)
-    //     .filter_map(|res: Result<Option<GlobalState>, AuthError>| res.ok().flatten())
-    //     .inspect(|s: GlobalState| log::info!("Global state: {s:?}"))
-    // Update::filter_message()
-    //     .branch(case![GlobalState::Unauthenticated].map_async(try_authenticate))
-    //     .branch(
-    //         case![GlobalState::Authenticating(x)].branch(
-    //             case![AuthenticationState::WaitingForTimezone].map_async(get_user_timezone),
-    //         ),
-    //     )
+    dptree::entry()
+        .map_async(middleware)
+        .filter_map(|res: Result<Option<GlobalState>, AuthError>| res.ok().flatten())
+        .inspect(|s: GlobalState| log::info!("Global state: {s:?}"))
 }
 
 #[cfg(test)]

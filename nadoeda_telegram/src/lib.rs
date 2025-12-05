@@ -66,7 +66,7 @@ impl TelegramInteractionInterface {
 
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .chain(authenticate_user::schema())
-            .chain(
+            .branch(
                 case![GlobalState::AuthenticatedV2(auth, state)]
                     .inject_auth_and_state::<AuthenticatedActionState>()
                     .enter_dialogue::<Update, InMemStorage<AuthenticatedActionState>, AuthenticatedActionState>()
