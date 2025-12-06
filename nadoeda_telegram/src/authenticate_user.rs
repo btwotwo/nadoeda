@@ -276,10 +276,29 @@ mod tests {
         let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
             .branch(schema())
             .endpoint(async move |flag: Arc<AtomicBool>| {
-                flag.swap(true, std::sync::atomic::Ordering::Acquire);
+                flag.store(true, std::sync::atomic::Ordering::Relaxed);
                 Ok(())
             });
         let mock_message = MockMessageText::new().text("Europe/Prague");
         let chat_id = mock_message.chat.id;
+
+        let mut bot = MockBot::new(MockMessageText::new().text("Random Text"), schema);
+
+        bot.dependencies(deps![
+            storage,
+            user_storage,
+            InMemStorage::<GlobalState>::new(),
+            GlobalState::Unauthenticated,
+            endpoint_called.clone()
+        ]);
+
+        bot.set_state(GlobalState::Unauthenticated).await;
+
+        bot.dispatch_and_check_state(GlobalState::Authenticating(
+            AuthenticationState::WaitingForTimezone,
+        ))
+            .await;
+
+        assert!(endpoint_called.load(std::sync::atomic::Ordering::Acquire));
     }
 }

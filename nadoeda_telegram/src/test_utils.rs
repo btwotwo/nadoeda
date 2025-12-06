@@ -38,3 +38,5 @@ pub fn storage(pool: Pool<Sqlite>) -> Arc<SqliteReminderStorage> {
 pub fn user_storage(pool: Pool<Sqlite>) -> Arc<SqliteUserInfoStorage> {
     Arc::new(SqliteUserInfoStorage::new(pool))
 }
+
+
