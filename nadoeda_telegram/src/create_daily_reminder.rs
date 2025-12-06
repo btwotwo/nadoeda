@@ -12,7 +12,9 @@ use teloxide::{Bot, types::Message};
 
 use nadoeda_models::reminder::ReminderFireTime;
 
-use crate::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo};
+use crate::{
+    AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo, create_daily_reminder,
+};
 
 use super::{GlobalCommand, HandlerResult};
 
@@ -131,8 +133,10 @@ async fn confirm_reminder(
     query: CallbackQuery,
     scheduler: Arc<dyn ReminderScheduler>,
 ) -> HandlerResult {
-    let fire_at = ReminderFireTime::new(firing_time).with_timezone(auth.0.timezone).unwrap();
-    
+    let fire_at = ReminderFireTime::new(firing_time)
+        .with_timezone(auth.0.timezone)
+        .unwrap();
+
     let reminder = NewReminder {
         text,
         fire_at,
@@ -159,11 +163,11 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
     dptree::entry()
         .branch(
             case![AuthenticatedActionState::Idle].branch(
-                Update::filter_message().branch(
-                    teloxide::filter_command::<GlobalCommand, _>()
-                        .branch(case![GlobalCommand::CreateReminder])
-                        .endpoint(create_daily_reminder_start),
-                ),
+                Update::filter_message()
+                    .filter_command::<GlobalCommand>()
+                    .branch(
+                        case![GlobalCommand::CreateReminder].endpoint(create_daily_reminder_start),
+                    ),
             ),
         )
         .branch(

@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use dptree::case;
-use nadoeda_storage::{sqlite::reminder_storage::SqliteReminderStorage, ReminderStorage};
+use nadoeda_storage::{ReminderStorage, sqlite::reminder_storage::SqliteReminderStorage};
 use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
 use teloxide::types::ParseMode;
@@ -57,10 +57,9 @@ Edit \\- /edit\\_{2}",
 pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
     dptree::entry().branch(
         case![AuthenticatedActionState::Idle].branch(
-            Update::filter_message().branch(
-                teloxide::filter_command::<GlobalCommand, _>()
-                    .branch(case![GlobalCommand::ListReminders].endpoint(list_reminders))
-            )
-        )
+            Update::filter_message()
+                .filter_command::<GlobalCommand>()
+                .branch(case![GlobalCommand::ListReminders].endpoint(list_reminders)),
+        ),
     )
 }

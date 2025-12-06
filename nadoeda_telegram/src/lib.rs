@@ -154,7 +154,7 @@ where
     description = "These commands are supported:"
 )]
 enum GlobalCommand {
-    CreateReminder,
     ListReminders,
+    CreateReminder,
     Cancel,
 }
