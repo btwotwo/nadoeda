@@ -4,7 +4,7 @@ mod edit_reminders;
 mod util;
 
 #[cfg(test)]
-mod test_utils;
+mod tests;
 
 use authenticate_user::AuthenticationState;
 use nadoeda_models::user::User;
