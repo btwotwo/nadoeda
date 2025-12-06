@@ -194,7 +194,7 @@ async fn handle_event(
     let id = reminder.id;
     match (current_state, event) {
         (ReminderState::Pending, ReminderEvent::Schedule) => {
-            let delay = get_target_delay(&reminder.fire_at.time(), Utc::now())
+            let delay = get_target_delay(reminder.fire_at.time(), Utc::now())
                 .to_std()
                 .unwrap();
 

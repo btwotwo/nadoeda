@@ -13,7 +13,7 @@ use teloxide::{Bot, types::Message};
 use nadoeda_models::reminder::ReminderFireTime;
 
 use crate::{
-    AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo, create_daily_reminder,
+    AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo,
 };
 
 use super::{GlobalCommand, HandlerResult};
