@@ -7,11 +7,7 @@ use sqlx::Result;
 use teloxide::dispatching::dialogue::InMemStorageError;
 use teloxide::prelude::*;
 use teloxide::types::UpdateKind;
-use teloxide::{
-    dispatching::UpdateHandler,
-    dptree,
-    types::Update,
-};
+use teloxide::{dispatching::UpdateHandler, dptree, types::Update};
 
 use anyhow::anyhow;
 
@@ -159,7 +155,10 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
+    use std::{
+        cell::Cell,
+        sync::{Arc, atomic::AtomicBool},
+    };
 
     use crate::{AuthenticationInfo, test_utils::*};
 
@@ -264,5 +263,23 @@ mod tests {
             AuthenticatedActionState::Idle,
         ))
         .await;
+    }
+
+    #[sqlx::test(migrations = "../nadoeda_storage/migrations")]
+    async fn given_unauthenticated_state_when_user_exists_should_pass_message_to_other_handlers(
+        pool: Pool<Sqlite>,
+    ) {
+        let storage = storage(pool.clone());
+        let user_storage = user_storage(pool.clone());
+        let endpoint_called = Arc::new(AtomicBool::new(false));
+        let clone = endpoint_called.clone();
+        let schema = dialogue::enter::<Update, InMemStorage<GlobalState>, GlobalState, _>()
+            .branch(schema())
+            .endpoint(async move |flag: Arc<AtomicBool>| {
+                flag.swap(true, std::sync::atomic::Ordering::Acquire);
+                Ok(())
+            });
+        let mock_message = MockMessageText::new().text("Europe/Prague");
+        let chat_id = mock_message.chat.id;
     }
 }
