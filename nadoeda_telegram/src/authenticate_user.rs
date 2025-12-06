@@ -1,7 +1,5 @@
-use std::fmt::Display;
 use std::sync::Arc;
 
-use dptree::case;
 use nadoeda_models::chrono_tz;
 use nadoeda_storage::sqlite::user_storage::SqliteUserInfoStorage;
 use nadoeda_storage::{NewUser, UserInfoStorage};
@@ -10,13 +8,12 @@ use teloxide::dispatching::dialogue::InMemStorageError;
 use teloxide::prelude::*;
 use teloxide::types::UpdateKind;
 use teloxide::{
-    dispatching::{UpdateFilterExt, UpdateHandler},
+    dispatching::UpdateHandler,
     dptree,
     types::Update,
 };
 
 use anyhow::anyhow;
-use tokio::task::coop::consume_budget;
 
 use crate::{
     AuthenticatedActionState, AuthenticationInfo, GlobalDialogue, GlobalState, HandlerResult,

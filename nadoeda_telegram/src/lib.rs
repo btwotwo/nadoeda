@@ -17,7 +17,7 @@ use nadoeda_storage::{
     ReminderStorage,
     sqlite::{reminder_storage::SqliteReminderStorage, user_storage::SqliteUserInfoStorage},
 };
-use std::{process::Output, sync::Arc};
+use std::sync::Arc;
 use teloxide::{
     dispatching::dialogue::{self, GetChatId, InMemStorage},
     dptree::HandlerDescription,

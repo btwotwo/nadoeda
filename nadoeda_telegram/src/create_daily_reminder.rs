@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use chrono::NaiveTime;
-use chrono::TimeZone;
 use dptree::case;
 use nadoeda_scheduler::{ReminderScheduler, ScheduleRequest};
 use nadoeda_storage::sqlite::reminder_storage::SqliteReminderStorage;

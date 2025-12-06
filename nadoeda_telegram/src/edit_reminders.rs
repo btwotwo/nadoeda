@@ -11,7 +11,7 @@ use nadoeda_models::reminder::Reminder;
 
 use crate::AuthenticatedActionState;
 
-use super::{GlobalCommand, GlobalDialogue, GlobalState, HandlerResult};
+use super::{GlobalCommand, GlobalDialogue, HandlerResult};
 
 #[derive(Clone, Default)]
 pub(super) enum EditRemindersState {
