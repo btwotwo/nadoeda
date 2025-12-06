@@ -152,4 +152,3 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
         .filter_map(|res: Result<Option<GlobalState>, AuthError>| res.ok().flatten())
         .inspect(|s: GlobalState| log::info!("Global state: {s:?}"))
 }
-

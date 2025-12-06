@@ -22,12 +22,9 @@ pub struct SqliteReminderStorage {
 
 impl SqliteReminderStorage {
     pub fn new(pool: sqlx::SqlitePool) -> Self {
-        Self {
-            pool
-        }
+        Self { pool }
     }
 }
-
 
 #[async_trait]
 impl ReminderStorage for SqliteReminderStorage {

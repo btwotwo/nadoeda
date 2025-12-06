@@ -36,7 +36,10 @@ impl ReminderFireTime {
                 .expect("The date is always valid.");
 
         let naive_dt = date.and_time(self.0);
-        let local_dt = timezone.from_local_datetime(&naive_dt).single().ok_or("Daylight savings time encountered!")?;
+        let local_dt = timezone
+            .from_local_datetime(&naive_dt)
+            .single()
+            .ok_or("Daylight savings time encountered!")?;
 
         let utc_dt = local_dt.with_timezone(&Utc);
 

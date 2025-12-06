@@ -10,7 +10,11 @@ use nadoeda_storage::sqlite::{
     reminder_storage::SqliteReminderStorage, user_storage::SqliteUserInfoStorage,
 };
 use sqlx::{Pool, Sqlite};
-use teloxide::{dispatching::{DpHandlerDescription, UpdateHandler}, dptree::Handler, types::ChatId};
+use teloxide::{
+    dispatching::{DpHandlerDescription, UpdateHandler},
+    dptree::Handler,
+    types::ChatId,
+};
 use teloxide_tests::{MockBot, MockMessageText, mock_bot::DistributionKey};
 
 use crate::HandlerResult;

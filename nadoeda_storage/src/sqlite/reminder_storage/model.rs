@@ -67,12 +67,11 @@ pub fn parse_state(state: &str, attempts_left: Option<i64>) -> ReminderState {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use proptest::prelude::*;
     use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderState};
+    use proptest::prelude::*;
 
     fn arb_reminder_state() -> impl Strategy<Value = ReminderState> {
         prop_oneof![
@@ -89,18 +88,19 @@ mod tests {
 
     fn arb_reminder() -> impl Strategy<Value = Reminder> {
         (
-            any::<i64>(),       // id
-            any::<i64>(),       // user_id
-            arb_fire_time(),    // fire_at
-            ".*",               // text
-            arb_reminder_state()// state
-        ).prop_map(|(id, user_id, fire_at, text, state)| Reminder {
-            id,
-            user_id,
-            fire_at,
-            text,
-            state,
-        })
+            any::<i64>(),         // id
+            any::<i64>(),         // user_id
+            arb_fire_time(),      // fire_at
+            ".*",                 // text
+            arb_reminder_state(), // state
+        )
+            .prop_map(|(id, user_id, fire_at, text, state)| Reminder {
+                id,
+                user_id,
+                fire_at,
+                text,
+                state,
+            })
     }
 
     proptest! {
@@ -131,7 +131,7 @@ mod tests {
 
             let (kind, attempts) = convert_state(reminder.state.clone());
             let (kind2, attempts2) = convert_state(restored.state.clone());
-            
+
             prop_assert_eq!(kind, kind2, "State kind mismatch after roundtrip");
             prop_assert_eq!(attempts, attempts2, "Attempts mismatch after roundtrip");
         }

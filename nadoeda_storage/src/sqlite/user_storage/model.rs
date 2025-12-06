@@ -30,13 +30,13 @@ impl From<UserStorageModel> for User {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use proptest::prelude::*;
     use nadoeda_models::{chrono_tz, user::User};
+    use proptest::prelude::*;
 
     fn arb_user() -> impl Strategy<Value = User> {
         (
-            any::<i64>(),              // id
-            any::<Option<i64>>(),      // tg_chat_id
+            any::<i64>(),         // id
+            any::<Option<i64>>(), // tg_chat_id
             prop_oneof![
                 Just("UTC".to_string()),
                 Just("Europe/Moscow".to_string()),
@@ -45,14 +45,14 @@ mod tests {
                 ".*".prop_map(|s| s),
             ],
         )
-        .prop_map(|(id, tg_chat_id, tz)| {
-            let timezone = tz.parse().unwrap_or_default();
-            User {
-                id,
-                tg_chat_id,
-                timezone,
-            }
-        })
+            .prop_map(|(id, tg_chat_id, tz)| {
+                let timezone = tz.parse().unwrap_or_default();
+                User {
+                    id,
+                    tg_chat_id,
+                    timezone,
+                }
+            })
     }
 
     // --- Property tests ---
