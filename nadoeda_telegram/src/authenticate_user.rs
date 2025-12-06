@@ -54,7 +54,7 @@ impl Clone for AuthError {
 
 async fn try_authenticate(
     bot: Bot,
-    dialogue: GlobalDialogue,
+    dialogue: &GlobalDialogue,
     msg: Message,
     user_store: Arc<SqliteUserInfoStorage>,
 ) -> Result<bool, AuthError> {
@@ -87,7 +87,7 @@ async fn try_authenticate(
 
 pub async fn get_user_timezone(
     bot: Bot,
-    dialogue: GlobalDialogue,
+    dialogue: &GlobalDialogue,
     msg: Message,
     user_store: Arc<SqliteUserInfoStorage>,
 ) -> HandlerResult {
@@ -130,21 +130,13 @@ async fn middleware(
     update: Update,
     user_store: Arc<SqliteUserInfoStorage>,
 ) -> Result<Option<GlobalState>, AuthError> {
-    enum ContinueState {
-        Abort,
-        UseExistingAndContinue,
-        UpdateAndContinue,
-    }
-    // user exists => update state and pass message downstream
-    // user does not exist => just update state and short-circuit
-    // right after auth => just update state and short-circuit
     let UpdateKind::Message(msg) = update.kind else {
         return Ok(Some(state));
     };
 
     match state {
         GlobalState::Unauthenticated => {
-            let user_exists = try_authenticate(bot, dialogue.clone(), msg, user_store).await?;
+            let user_exists = try_authenticate(bot, &dialogue, msg, user_store).await?;
 
             if user_exists {
                 let new_state = dialogue.get_or_default().await?;
@@ -154,7 +146,7 @@ async fn middleware(
             }
         }
         GlobalState::Authenticating(AuthenticationState::WaitingForTimezone) => {
-            get_user_timezone(bot, dialogue.clone(), msg, user_store).await?;
+            get_user_timezone(bot, &dialogue, msg, user_store).await?;
             Ok(None)
         }
         _ => Ok(Some(state)),
