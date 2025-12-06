@@ -6,14 +6,11 @@ use async_trait::async_trait;
 use nadoeda_delivery_scheduler::DeliveryReminderScheduler;
 use nadoeda_models::reminder::Reminder;
 use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
-use nadoeda_storage::{
-    ReminderStorage,
-    sqlite::{
+use nadoeda_storage::sqlite::{
         reminder_storage::SqliteReminderStorage,
         sqlx::SqlitePool,
-        user_storage::{self, SqliteUserInfoStorage},
-    },
-};
+        user_storage::SqliteUserInfoStorage,
+    };
 use nadoeda_telegram::{TelegramInteractionInterface, teloxide};
 
 struct PrinterDeliveryChannel;
