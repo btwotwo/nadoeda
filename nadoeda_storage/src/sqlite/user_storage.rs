@@ -20,7 +20,7 @@ impl SqliteUserInfoStorage {
 impl UserInfoStorage for SqliteUserInfoStorage {
     type Error = anyhow::Error;
 
-    async fn get(&self, id: UserId) -> Result<Option<User>, Self::Error> {
+    async fn get(&self, id: &UserId) -> Result<Option<User>, Self::Error> {
         let user = sqlx::query_as!(UserStorageModel, "SELECT * FROM users WHERE id = ?;", id)
             .fetch_optional(&self.pool)
             .await?;
@@ -80,7 +80,7 @@ impl UserInfoStorage for SqliteUserInfoStorage {
 
         Ok(user.into())
     }
-    async fn delete(&self, id: UserId) -> Result<(), Self::Error> {
+    async fn delete(&self, id: &UserId) -> Result<(), Self::Error> {
         sqlx::query_as!(UserStorageModel, "DELETE FROM users WHERE id = ?", id)
             .execute(&self.pool)
             .await?;

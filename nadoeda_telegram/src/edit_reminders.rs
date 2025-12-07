@@ -25,7 +25,7 @@ async fn list_reminders(
     dialogue: GlobalDialogue,
     msg: Message,
 ) -> HandlerResult {
-    let reminders = storage.get_all_user_reminders(0).await?;
+    let reminders = storage.get_all_user_reminders(&0).await?;
     let message = if reminders.is_empty() {
         "You have to create at least one reminder\\!".to_string()
     } else {
