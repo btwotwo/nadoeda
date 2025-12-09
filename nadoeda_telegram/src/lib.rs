@@ -7,6 +7,7 @@ mod util;
 mod tests;
 
 use authenticate_user::AuthenticationState;
+use edit_reminders::EditingRemindersState;
 use nadoeda_models::user::User;
 pub use teloxide;
 
@@ -48,6 +49,7 @@ enum AuthenticatedActionState {
     #[default]
     Idle,
     CreatingDailyReminder(CreatingDailyReminderState),
+    EditingReminder(EditingRemindersState)
 }
 
 pub struct TelegramInteractionInterface;
