@@ -60,7 +60,7 @@ mod tests {
     proptest! {
         #[test]
         fn test_user_roundtrip(user in arb_user()) {
-            let storage: UserStorageModel = user.clone().into();
+            let storage: UserStorageModel = user.into();
             let restored: User = storage.into();
 
             prop_assert_eq!(user.id, restored.id);

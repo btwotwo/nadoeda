@@ -1,14 +1,9 @@
-use std::{
-    cell::Cell,
-    sync::{Arc, atomic::AtomicBool},
-};
 
 use crate::{
     AuthenticatedActionState, AuthenticationInfo, AuthenticationState, GlobalState,
     tests::test_utils::*,
 };
 
-use super::*;
 
 use crate::authenticate_user::schema;
 use nadoeda_models::{chrono_tz, user::User};
@@ -141,7 +136,7 @@ async fn given_unauthenticated_state_when_user_does_not_exist_should_not_pass_me
     ))
     .await;
 
-    assert_eq!(false, marker.was_called());
+    assert!(!marker.was_called());
 }
 
 #[sqlx::test(migrations = "../nadoeda_storage/migrations")]

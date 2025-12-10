@@ -11,7 +11,7 @@ use nadoeda_storage::sqlite::{
 };
 use sqlx::{Pool, Sqlite};
 use teloxide::{
-    dispatching::{DpHandlerDescription, UpdateHandler},
+    dispatching::DpHandlerDescription,
     dptree::Handler,
     types::ChatId,
 };
@@ -80,7 +80,7 @@ pub fn bot(
     schema: Handler<'static, Result<(), Error>, DpHandlerDescription>,
 ) -> (MockBot<anyhow::Error, DistributionKey>, ChatId) {
     let mock_text = MockMessageText::new().text(msg_text);
-    let chat_id = mock_text.chat.id.clone();
+    let chat_id = mock_text.chat.id;
     let bot = MockBot::new(mock_text, schema);
 
     (bot, chat_id)

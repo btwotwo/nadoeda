@@ -106,7 +106,7 @@ mod tests {
     proptest! {
         #[test]
         fn test_convert_and_parse_state_roundtrip(state in arb_reminder_state()) {
-            let (kind, attempts) = convert_state(state.clone());
+            let (kind, attempts) = convert_state(state);
             let parsed = parse_state(&kind, attempts);
             match (state, parsed) {
                 (ReminderState::Pending, ReminderState::Pending)
@@ -129,8 +129,8 @@ mod tests {
             prop_assert_eq!(reminder.text, restored.text);
             prop_assert_eq!(reminder.fire_at.into_string(), restored.fire_at.into_string());
 
-            let (kind, attempts) = convert_state(reminder.state.clone());
-            let (kind2, attempts2) = convert_state(restored.state.clone());
+            let (kind, attempts) = convert_state(reminder.state);
+            let (kind2, attempts2) = convert_state(restored.state);
 
             prop_assert_eq!(kind, kind2, "State kind mismatch after roundtrip");
             prop_assert_eq!(attempts, attempts2, "Attempts mismatch after roundtrip");
@@ -150,7 +150,7 @@ mod tests {
 
         #[test]
         fn test_convert_state_consistency(state in arb_reminder_state()) {
-            let (kind, attempts) = convert_state(state.clone());
+            let (kind, attempts) = convert_state(state);
             match (kind.as_str(), attempts, state) {
                 ("Pending", None, ReminderState::Pending) => {},
                 ("Scheduled", None, ReminderState::Scheduled) => {},

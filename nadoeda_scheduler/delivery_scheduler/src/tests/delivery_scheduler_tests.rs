@@ -233,7 +233,7 @@ async fn wait(duration: chrono::Duration) {
 }
 
 fn expected_delay(reminder: &Reminder) -> chrono::Duration {
-    get_target_delay(&reminder.fire_at.time(), Utc::now())
+    get_target_delay(reminder.fire_at.time(), Utc::now())
 }
 
 fn reminder_at(time: NaiveTime) -> Reminder {
