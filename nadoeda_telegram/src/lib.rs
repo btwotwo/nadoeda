@@ -20,8 +20,7 @@ use nadoeda_storage::{
 };
 use std::sync::Arc;
 use teloxide::{
-    dispatching::dialogue::{self, GetChatId, InMemStorage},
-    dptree::HandlerDescription,
+    dispatching::dialogue::{self, InMemStorage},
     macros::BotCommands,
     prelude::*,
 };

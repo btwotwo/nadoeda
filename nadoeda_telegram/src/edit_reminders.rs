@@ -3,8 +3,6 @@ use std::sync::Arc;
 use chrono::NaiveTime;
 use dptree::case;
 use nadoeda_storage::{ReminderStorage, sqlite::reminder_storage::SqliteReminderStorage};
-use teloxide::dispatching::dialogue::GetChatId;
-use teloxide::payloads::EditMessageCaptionSetters;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode};
 use teloxide::utils::markdown;
 use teloxide::{dispatching::UpdateHandler, macros::BotCommands};
@@ -13,7 +11,7 @@ use teloxide::{filter_command, prelude::*};
 use nadoeda_models::reminder::{Reminder, ReminderId};
 
 use crate::util::{clear_message_buttons, try_get_message_from_query};
-use crate::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo};
+use crate::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo, AuthenticationState};
 
 use super::{GlobalCommand, GlobalDialogue, HandlerResult};
 
@@ -149,6 +147,7 @@ async fn handle_selected_field(
     Ok(())
 }
 
+
 fn display_reminder(order: usize, reminder: &Reminder) -> String {
     format!(
         "{order}: *{0}* \\(remind every day at *{1}*\\)
@@ -180,6 +179,10 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
                     case![EditingRemindersState::WaitingForFieldSelection(rem)]
                         .endpoint(handle_selected_field),
                 ),
+            ).branch(
+                Update::filter_message().branch(
+                    case![EditingRemindersState::WaitingForText(reminder)].endpoint(f)
+                )
             ),
         )
 }
