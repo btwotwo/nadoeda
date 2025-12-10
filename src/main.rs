@@ -45,5 +45,5 @@ async fn main() {
         async move { TelegramInteractionInterface::start(bot, scheduler, storage, user_storage).await }
     });
 
-    interface_task.await;
+    interface_task.await.expect("Error in the interface task");
 }
