@@ -3,6 +3,7 @@ use std::sync::Arc;
 use chrono::NaiveTime;
 use dptree::case;
 use nadoeda_storage::{ReminderStorage, sqlite::reminder_storage::SqliteReminderStorage};
+use teloxide::dispatching::dialogue;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode};
 use teloxide::utils::markdown;
 use teloxide::{dispatching::UpdateHandler, macros::BotCommands};
@@ -11,7 +12,9 @@ use teloxide::{filter_command, prelude::*};
 use nadoeda_models::reminder::{Reminder, ReminderId};
 
 use crate::util::{clear_message_buttons, try_get_message_from_query};
-use crate::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo, AuthenticationState};
+use crate::{
+    AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo, AuthenticationState,
+};
 
 use super::{GlobalCommand, GlobalDialogue, HandlerResult};
 
@@ -147,6 +150,38 @@ async fn handle_selected_field(
     Ok(())
 }
 
+async fn save_reminder_text(
+    msg: Message,
+    bot: Bot,
+    reminder: Arc<Reminder>,
+    store: Arc<SqliteReminderStorage>,
+    dialogue: AuthenticatedDialogue,
+) -> HandlerResult {
+    match msg.text() {
+        Some(text) => {
+            let message = format!(
+                "New text: *\"{}\"*",
+                teloxide::utils::markdown::escape(text)
+            );
+            bot.send_message(msg.chat.id, message)
+                .parse_mode(ParseMode::MarkdownV2)
+                .await?;
+            
+            let mut new_reminder = Reminder::clone(&reminder);
+            new_reminder.text = text.to_string();
+            store.update(new_reminder).await?;
+
+            bot.send_message(msg.chat.id, "Reminder updated").await?;
+            dialogue.exit().await?;
+        }
+        None => {
+            bot.send_message(msg.chat.id, "Please send me reminder text.")
+                .await?;
+        }
+    }
+
+    Ok(())
+}
 
 fn display_reminder(order: usize, reminder: &Reminder) -> String {
     format!(
@@ -174,15 +209,18 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
             ),
         )
         .branch(
-            case![AuthenticatedActionState::EditingReminder(x)].branch(
-                Update::filter_callback_query().branch(
-                    case![EditingRemindersState::WaitingForFieldSelection(rem)]
-                        .endpoint(handle_selected_field),
-                ),
-            ).branch(
-                Update::filter_message().branch(
-                    case![EditingRemindersState::WaitingForText(reminder)].endpoint(f)
+            case![AuthenticatedActionState::EditingReminder(x)]
+                .branch(
+                    Update::filter_callback_query().branch(
+                        case![EditingRemindersState::WaitingForFieldSelection(rem)]
+                            .endpoint(handle_selected_field),
+                    ),
                 )
-            ),
+                .branch(
+                    Update::filter_message().branch(
+                        case![EditingRemindersState::WaitingForText(reminder)]
+                            .endpoint(save_reminder_text),
+                    ),
+                ),
         )
 }
