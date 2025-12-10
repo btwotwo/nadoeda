@@ -2,13 +2,11 @@ use std::sync::Arc;
 
 use chrono::NaiveTime;
 use dptree::case;
-use nadoeda_storage::reminder;
 use nadoeda_storage::{ReminderStorage, sqlite::reminder_storage::SqliteReminderStorage};
-use teloxide::dispatching::dialogue::{self, GetChatId};
+use teloxide::dispatching::dialogue::GetChatId;
 use teloxide::payloads::EditMessageCaptionSetters;
-use teloxide::sugar::bot::BotMessagesExt;
 use teloxide::types::{
-    InaccessibleMessage, InlineKeyboardButton, InlineKeyboardMarkup, MaybeInaccessibleMessage,
+    InlineKeyboardButton, InlineKeyboardMarkup,
     ParseMode,
 };
 use teloxide::utils::markdown;
@@ -111,7 +109,6 @@ async fn edit_reminder(
 
 async fn handle_selected_field(
     dialogue: AuthenticatedDialogue,
-    auth: AuthenticationInfo,
     store: Arc<SqliteReminderStorage>,
     bot: Bot,
     query: CallbackQuery,

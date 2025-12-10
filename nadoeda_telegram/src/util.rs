@@ -28,15 +28,15 @@ where
     }
 }
 
-pub fn try_get_message_from_query<'a>(query: &'a CallbackQuery) -> Option<&'a Box<Message>> {
+pub fn try_get_message_from_query(query: &CallbackQuery) -> Option<&Message> {
     query.message.as_ref().and_then(|msg| match msg {
         MaybeInaccessibleMessage::Inaccessible(_) => None,
-        MaybeInaccessibleMessage::Regular(message) => Some(message),
+        MaybeInaccessibleMessage::Regular(message) => Some(message.as_ref()),
     })
 }
 
 pub async fn clear_message_buttons(bot: &Bot, message: &Message) -> Result<(), anyhow::Error> {
-    bot.edit_reply_markup(&message)
+    bot.edit_reply_markup(message)
         .reply_markup(InlineKeyboardMarkup::default())
         .await?;
 
