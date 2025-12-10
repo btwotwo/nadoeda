@@ -5,10 +5,7 @@ use dptree::case;
 use nadoeda_storage::{ReminderStorage, sqlite::reminder_storage::SqliteReminderStorage};
 use teloxide::dispatching::dialogue::GetChatId;
 use teloxide::payloads::EditMessageCaptionSetters;
-use teloxide::types::{
-    InlineKeyboardButton, InlineKeyboardMarkup,
-    ParseMode,
-};
+use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode};
 use teloxide::utils::markdown;
 use teloxide::{dispatching::UpdateHandler, macros::BotCommands};
 use teloxide::{filter_command, prelude::*};
@@ -123,7 +120,7 @@ async fn handle_selected_field(
 
                 bot.send_message(dialogue.chat_id(), "Please enter reminder text.")
                     .await?;
-                
+
                 dialogue
                     .update(AuthenticatedActionState::EditingReminder(
                         EditingRemindersState::WaitingForText(reminder),

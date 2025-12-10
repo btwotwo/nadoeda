@@ -30,7 +30,11 @@ impl SqliteReminderStorage {
 impl ReminderStorage for SqliteReminderStorage {
     type Error = SqliteReminderError;
 
-    async fn get(&self, id: &ReminderId, user_id: &UserId) -> Result<Option<Reminder>, Self::Error> {
+    async fn get(
+        &self,
+        id: &ReminderId,
+        user_id: &UserId,
+    ) -> Result<Option<Reminder>, Self::Error> {
         let reminder = sqlx::query_as!(
             ReminderStorageModel,
             "SELECT * FROM reminders WHERE id = ? AND user_id = ?",

@@ -1,9 +1,7 @@
-
 use crate::{
     AuthenticatedActionState, AuthenticationInfo, AuthenticationState, GlobalState,
     tests::test_utils::*,
 };
-
 
 use crate::authenticate_user::schema;
 use nadoeda_models::{chrono_tz, user::User};

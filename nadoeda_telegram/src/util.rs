@@ -1,5 +1,9 @@
 use teloxide::{
-    dptree::{Handler, HandlerDescription}, payloads::EditMessageReplyMarkupSetters, sugar::bot::BotMessagesExt, types::{CallbackQuery, InlineKeyboardMarkup, MaybeInaccessibleMessage, Message}, Bot
+    Bot,
+    dptree::{Handler, HandlerDescription},
+    payloads::EditMessageReplyMarkupSetters,
+    sugar::bot::BotMessagesExt,
+    types::{CallbackQuery, InlineKeyboardMarkup, MaybeInaccessibleMessage, Message},
 };
 
 use crate::AuthenticationInfo;

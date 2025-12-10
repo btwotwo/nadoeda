@@ -49,7 +49,7 @@ enum AuthenticatedActionState {
     #[default]
     Idle,
     CreatingDailyReminder(CreatingDailyReminderState),
-    EditingReminder(EditingRemindersState)
+    EditingReminder(EditingRemindersState),
 }
 
 pub struct TelegramInteractionInterface;
