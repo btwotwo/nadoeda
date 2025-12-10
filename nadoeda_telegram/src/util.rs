@@ -1,4 +1,6 @@
-use teloxide::dptree::{Handler, HandlerDescription};
+use teloxide::{
+    dptree::{Handler, HandlerDescription}, payloads::EditMessageReplyMarkupSetters, sugar::bot::BotMessagesExt, types::{CallbackQuery, InlineKeyboardMarkup, MaybeInaccessibleMessage, Message}, Bot
+};
 
 use crate::AuthenticationInfo;
 
@@ -24,4 +26,19 @@ where
         self.map(|(a, _): (AuthenticationInfo, TState)| a)
             .map(|(_, b): (AuthenticationInfo, TState)| b)
     }
+}
+
+pub fn try_get_message_from_query<'a>(query: &'a CallbackQuery) -> Option<&'a Box<Message>> {
+    query.message.as_ref().and_then(|msg| match msg {
+        MaybeInaccessibleMessage::Inaccessible(_) => None,
+        MaybeInaccessibleMessage::Regular(message) => Some(message),
+    })
+}
+
+pub async fn clear_message_buttons(bot: &Bot, message: &Message) -> Result<(), anyhow::Error> {
+    bot.edit_reply_markup(&message)
+        .reply_markup(InlineKeyboardMarkup::default())
+        .await?;
+
+    Ok(())
 }

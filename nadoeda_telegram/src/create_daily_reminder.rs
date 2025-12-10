@@ -7,11 +7,13 @@ use nadoeda_storage::sqlite::reminder_storage::SqliteReminderStorage;
 use nadoeda_storage::{NewReminder, ReminderStorage};
 use teloxide::dispatching::UpdateHandler;
 use teloxide::prelude::*;
+use teloxide::sugar::bot::BotMessagesExt;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup};
 use teloxide::{Bot, types::Message};
 
 use nadoeda_models::reminder::ReminderFireTime;
 
+use crate::util::try_get_message_from_query;
 use crate::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo};
 
 use super::{GlobalCommand, HandlerResult};
@@ -142,6 +144,15 @@ async fn confirm_reminder(
     };
 
     let reminder = storage.insert(reminder).await?;
+
+    let msg = try_get_message_from_query(&query);
+
+    if let Some(msg) = msg {
+        bot.edit_reply_markup(msg)
+            .reply_markup(Default::default())
+            .await?;
+    }
+
     bot.answer_callback_query(query.id).await?;
 
     log::info!("Created reminder with id {}", reminder.id);

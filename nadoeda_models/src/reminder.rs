@@ -17,7 +17,7 @@ pub enum ReminderFiringPeriod {
 
 pub type ReminderId = i64;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ReminderFireTime(chrono::NaiveTime);
 
 impl ReminderFireTime {
@@ -64,7 +64,7 @@ impl ReminderFireTime {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Reminder {
     pub id: ReminderId,
     pub state: ReminderState,
