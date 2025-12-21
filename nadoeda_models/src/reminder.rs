@@ -1,3 +1,5 @@
+use std::panic;
+
 use chrono::{Datelike, NaiveDate, NaiveTime, Timelike, Utc};
 
 use crate::user::UserId;
@@ -26,16 +28,16 @@ impl ReminderFireTime {
         Self(normalized_time)
     }
 
-    pub fn with_timezone(self, timezone: impl chrono::TimeZone) -> Result<Self, &'static str> {
-        let today_local = timezone
+    pub fn new_utc_from_local(
+        time: chrono::NaiveTime,
+        timezone: impl chrono::TimeZone,
+    ) -> Result<Self, &'static str> {
+        let date_tz = timezone
             .from_utc_datetime(&Utc::now().naive_utc())
             .date_naive();
 
-        let date =
-            NaiveDate::from_ymd_opt(today_local.year(), today_local.month(), today_local.day())
-                .expect("The date is always valid.");
-
-        let naive_dt = date.and_time(self.0);
+        let naive_dt = date_tz.and_time(time);
+        
         let local_dt = timezone
             .from_local_datetime(&naive_dt)
             .single()
@@ -44,6 +46,13 @@ impl ReminderFireTime {
         let utc_dt = local_dt.with_timezone(&Utc);
 
         Ok(Self(utc_dt.time()))
+    }
+
+    pub fn to_local_time(&self, timezone: impl chrono::TimeZone) -> chrono::NaiveTime {
+        let date_utc = Utc::now().date_naive();
+        let naive_dt = date_utc.and_time(self.0);
+        let local_dt = timezone.from_utc_datetime(&naive_dt);
+        local_dt.time()
     }
 
     pub fn time(&self) -> &chrono::NaiveTime {

@@ -133,9 +133,7 @@ async fn confirm_reminder(
     query: CallbackQuery,
     scheduler: Arc<dyn ReminderScheduler>,
 ) -> HandlerResult {
-    let fire_at = ReminderFireTime::new(firing_time)
-        .with_timezone(auth.0.timezone)
-        .unwrap();
+    let fire_at = ReminderFireTime::new_utc_from_local(firing_time, auth.0.timezone).unwrap();
 
     let reminder = NewReminder {
         text,

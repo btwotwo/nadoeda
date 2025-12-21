@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use chrono::NaiveTime;
 use dptree::case;
+use nadoeda_models::user::User;
 use nadoeda_storage::{ReminderStorage, sqlite::reminder_storage::SqliteReminderStorage};
 use teloxide::dispatching::dialogue;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode};
@@ -9,7 +10,7 @@ use teloxide::utils::markdown;
 use teloxide::{dispatching::UpdateHandler, macros::BotCommands};
 use teloxide::{filter_command, prelude::*};
 
-use nadoeda_models::reminder::{Reminder, ReminderId};
+use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderId};
 
 use crate::util::{clear_message_buttons, try_get_message_from_query};
 use crate::{
@@ -59,7 +60,7 @@ async fn list_reminders(
         reminders
             .iter()
             .enumerate()
-            .map(|(i, reminder)| display_reminder(i + 1, reminder))
+            .map(|(i, reminder)| format_reminder(i + 1, reminder, &auth.0))
             .collect::<Vec<String>>()
             .join("\n\n")
     };
@@ -159,19 +160,19 @@ async fn save_reminder_text(
 ) -> HandlerResult {
     match msg.text() {
         Some(text) => {
-            let message = format!(
-                "New text: *\"{}\"*",
-                teloxide::utils::markdown::escape(text)
-            );
-            bot.send_message(msg.chat.id, message)
-                .parse_mode(ParseMode::MarkdownV2)
-                .await?;
-            
             let mut new_reminder = Reminder::clone(&reminder);
             new_reminder.text = text.to_string();
             store.update(new_reminder).await?;
 
-            bot.send_message(msg.chat.id, "Reminder updated").await?;
+            let message = format!(
+                "Reminder updated, new text: *\"{}\"*",
+                teloxide::utils::markdown::escape(text)
+            );
+
+            bot.send_message(msg.chat.id, message)
+                .parse_mode(ParseMode::MarkdownV2)
+                .await?;
+
             dialogue.exit().await?;
         }
         None => {
@@ -183,12 +184,52 @@ async fn save_reminder_text(
     Ok(())
 }
 
-fn display_reminder(order: usize, reminder: &Reminder) -> String {
+async fn save_reminder_time(
+    msg: Message,
+    bot: Bot,
+    reminder: Arc<Reminder>,
+    store: Arc<SqliteReminderStorage>,
+    auth: AuthenticationInfo,
+    dialogue: AuthenticatedDialogue,
+) -> HandlerResult {
+    match msg
+        .text()
+        .map(|text| NaiveTime::parse_from_str(text, "%H:%M"))
+    {
+        Some(Ok(time)) => {
+            let mut new_reminder = Reminder::clone(&reminder);
+            new_reminder.fire_at =
+                ReminderFireTime::new_utc_from_local(time, auth.0.timezone).unwrap();
+
+            store.update(new_reminder).await?;
+
+            let message = format!(
+                "Reminder updated, new time: *{}*",
+                teloxide::utils::markdown::escape(&time.format("%H:%M").to_string())
+            );
+
+            bot.send_message(msg.chat.id, message)
+                .parse_mode(ParseMode::MarkdownV2)
+                .await?;
+
+            dialogue.exit().await?;
+        }
+        _ => {
+            bot.send_message(msg.chat.id, "Please enter the time. Example: 13:00")
+                .await?;
+        }
+    }
+
+    Ok(())
+}
+
+fn format_reminder(order: usize, reminder: &Reminder, user: &User) -> String {
+    let adjusted_fire_time = reminder.fire_at.to_local_time(user.timezone);
     format!(
         "{order}: *{0}* \\(remind every day at *{1}*\\)
 Edit \\- /edit\\_{2}",
         markdown::escape(&reminder.text),
-        reminder.fire_at.time().format("%H:%M"),
+        adjusted_fire_time.format("%H:%M"),
         reminder.id
     )
 }
@@ -217,10 +258,15 @@ pub(super) fn schema() -> UpdateHandler<anyhow::Error> {
                     ),
                 )
                 .branch(
-                    Update::filter_message().branch(
-                        case![EditingRemindersState::WaitingForText(reminder)]
-                            .endpoint(save_reminder_text),
-                    ),
+                    Update::filter_message()
+                        .branch(
+                            case![EditingRemindersState::WaitingForText(reminder)]
+                                .endpoint(save_reminder_text),
+                        )
+                        .branch(
+                            case![EditingRemindersState::WaitingForTime(reminder)]
+                                .endpoint(save_reminder_time),
+                        ),
                 ),
         )
 }
