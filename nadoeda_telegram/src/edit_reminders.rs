@@ -4,7 +4,6 @@ use chrono::NaiveTime;
 use dptree::case;
 use nadoeda_models::user::User;
 use nadoeda_storage::{ReminderStorage, sqlite::reminder_storage::SqliteReminderStorage};
-use teloxide::dispatching::dialogue;
 use teloxide::types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode};
 use teloxide::utils::markdown;
 use teloxide::{dispatching::UpdateHandler, macros::BotCommands};
@@ -13,11 +12,9 @@ use teloxide::{filter_command, prelude::*};
 use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderId};
 
 use crate::util::{clear_message_buttons, try_get_message_from_query};
-use crate::{
-    AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo, AuthenticationState,
-};
+use crate::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo};
 
-use super::{GlobalCommand, GlobalDialogue, HandlerResult};
+use super::{GlobalCommand, HandlerResult};
 
 #[derive(Clone, Default, Debug, PartialEq, Eq)]
 pub(super) enum EditingRemindersState {
@@ -26,14 +23,6 @@ pub(super) enum EditingRemindersState {
     WaitingForFieldSelection(Arc<Reminder>),
     WaitingForText(Arc<Reminder>),
     WaitingForTime(Arc<Reminder>),
-    ReceivedText {
-        reminder: Arc<Reminder>,
-        text: String,
-    },
-    ReceivedTime {
-        reminder: Arc<Reminder>,
-        time: NaiveTime,
-    },
 }
 
 #[derive(BotCommands, Clone)]
@@ -49,7 +38,6 @@ enum EditReminderCommand {
 async fn list_reminders(
     storage: Arc<SqliteReminderStorage>,
     bot: Bot,
-    dialogue: GlobalDialogue,
     auth: AuthenticationInfo,
     msg: Message,
 ) -> HandlerResult {
