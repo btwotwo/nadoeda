@@ -6,7 +6,7 @@ use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_storage::{UserInfoStorage, sqlite::user_storage::SqliteUserInfoStorage};
 use teloxide::{
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup},
+    types::{InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup, ParseMode},
 };
 use thiserror::Error;
 
@@ -61,6 +61,7 @@ impl ReminderDeliveryChannel for TelegramDeliveryChannel {
         self.bot
             .send_message(ChatId(chat_id), message_text)
             .reply_markup(keyboard_markup)
+            .parse_mode(ParseMode::MarkdownV2)
             .await?;
 
         Ok(())
