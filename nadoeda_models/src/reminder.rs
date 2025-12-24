@@ -1,4 +1,3 @@
-
 use chrono::{NaiveTime, Timelike, Utc};
 
 use crate::user::UserId;
@@ -36,7 +35,7 @@ impl ReminderFireTime {
             .date_naive();
 
         let naive_dt = date_tz.and_time(time);
-        
+
         let local_dt = timezone
             .from_local_datetime(&naive_dt)
             .single()
