@@ -27,7 +27,7 @@ enum ReminderEvent {
     Trigger,
     Acknowledge,
     Confirm,
-    Stop,
+    Cancel,
 }
 
 struct ScheduledReminderHandle {
@@ -140,7 +140,7 @@ impl ReminderScheduler for DeliveryReminderScheduler {
             .await
             .remove_entry(&scheduled_reminder.id)
         {
-            scheduled_reminder.tx.send(ReminderEvent::Stop).await?;
+            scheduled_reminder.tx.send(ReminderEvent::Cancel).await?;
 
             Ok(())
         } else {
@@ -177,7 +177,7 @@ async fn run_reminder(
         let new_state =
             handle_event(&reminder, &reminder.state, &event, delivery, tx.clone()).await;
         reminder.state = new_state;
-        if matches!(event, ReminderEvent::Stop) {
+        if matches!(event, ReminderEvent::Cancel) {
             break;
         }
     }
@@ -300,9 +300,9 @@ async fn handle_event(
                 .await;
             ReminderState::Pending
         }
-        (_, ReminderEvent::Stop) => {
+        (_, ReminderEvent::Cancel) => {
             delivery
-                .send_reminder_notification(reminder, ReminderMessageType::Stopped)
+                .send_reminder_notification(reminder, ReminderMessageType::Cancelled)
                 .await;
             ReminderState::Pending
         }

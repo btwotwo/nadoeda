@@ -1,3 +1,5 @@
+use std::error::Error;
+
 use async_trait::async_trait;
 use nadoeda_models::reminder::Reminder;
 
@@ -10,10 +12,14 @@ pub enum ReminderMessageType {
     Acknowledge,
     Timeout,
     Finished,
-    Stopped,
+    Cancelled,
 }
 
 #[async_trait]
 pub trait ReminderDeliveryChannel: Send + Sync {
-    async fn send_reminder_notification(&self, reminder: &Reminder, message: ReminderMessageType);
+    async fn send_reminder_notification(
+        &self,
+        reminder: &Reminder,
+        message: ReminderMessageType,
+    ) -> Result<(), Box<dyn Error>>;
 }

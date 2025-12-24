@@ -1,6 +1,6 @@
 mod appsettings;
 
-use std::sync::Arc;
+use std::{error::Error, sync::Arc};
 
 use async_trait::async_trait;
 use nadoeda_delivery_scheduler::DeliveryReminderScheduler;
@@ -9,14 +9,19 @@ use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_storage::sqlite::{
     reminder_storage::SqliteReminderStorage, sqlx::SqlitePool, user_storage::SqliteUserInfoStorage,
 };
-use nadoeda_telegram::{TelegramInteractionInterface, teloxide};
+use nadoeda_telegram::{TelegramInteractionInterface, delivery::TelegramDeliveryChannel, teloxide};
 
 struct PrinterDeliveryChannel;
 
 #[async_trait]
 impl ReminderDeliveryChannel for PrinterDeliveryChannel {
-    async fn send_reminder_notification(&self, reminder: &Reminder, message: ReminderMessageType) {
-        println!("{:?} - {:?}", reminder, message)
+    async fn send_reminder_notification(
+        &self,
+        reminder: &Reminder,
+        message: ReminderMessageType,
+    ) -> Result<(), Box<dyn Error>> {
+        println!("{:?} - {:?}", reminder, message);
+        Ok(())
     }
 }
 
@@ -31,11 +36,14 @@ async fn main() {
         Arc::new(SqliteReminderStorage::new(sqlite_pool.clone()));
     let user_storage: Arc<SqliteUserInfoStorage> =
         Arc::new(SqliteUserInfoStorage::new(sqlite_pool.clone()));
-    let scheduler = Arc::new(DeliveryReminderScheduler::new(Arc::new(
-        PrinterDeliveryChannel,
-    )));
 
     let bot = teloxide::Bot::new(appsettings::get().telegram.token.clone());
+    let tg_delivery: Arc<dyn ReminderDeliveryChannel> = Arc::new(TelegramDeliveryChannel::new(
+        Arc::clone(&user_storage),
+        bot.clone(),
+    ));
+
+    let scheduler = Arc::new(DeliveryReminderScheduler::new(Arc::clone(&tg_delivery)));
 
     let interface_task = tokio::spawn({
         let storage = storage.clone();

@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -19,8 +20,13 @@ struct TestDeliveryChannel {
 
 #[async_trait]
 impl ReminderDeliveryChannel for TestDeliveryChannel {
-    async fn send_reminder_notification(&self, _reminder: &Reminder, message: ReminderMessageType) {
+    async fn send_reminder_notification(
+        &self,
+        _reminder: &Reminder,
+        message: ReminderMessageType,
+    ) -> Result<(), Box<dyn Error>> {
         self.received_messages.lock().unwrap().push(message);
+        Ok(())
     }
 }
 
@@ -92,7 +98,7 @@ async fn stopping_proptest(#[strategy(time_strategy())] time: NaiveTime) {
     wait(expected_delay).await;
 
     let msgs = ctx.received_messages.lock().unwrap();
-    prop_assert_eq!(&msgs[..], &[ReminderMessageType::Stopped]);
+    prop_assert_eq!(&msgs[..], &[ReminderMessageType::Cancelled]);
 }
 
 #[proptest(async = tokio_ct)]

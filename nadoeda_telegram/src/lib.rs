@@ -1,5 +1,6 @@
 mod authenticate_user;
 mod create_daily_reminder;
+pub mod delivery;
 mod edit_reminders;
 mod util;
 
