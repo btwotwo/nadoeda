@@ -54,15 +54,16 @@ async fn receive_reminder_text(
 ) -> HandlerResult {
     match msg.text() {
         Some(text) => {
+            let escaped_text = teloxide::utils::markdown::escape(text);
             let message = format!(
                 "Great! You will be reminded about \"{}\"\nNow, please enter time when reminder is going to be fired (e.g. 13:00)",
-                teloxide::utils::markdown::escape(text)
+                escaped_text
             );
             bot.send_message(msg.chat.id, message).await?;
             dialogue
                 .update(AuthenticatedActionState::CreatingDailyReminder(
                     CreatingDailyReminderState::WaitingForFiringTime {
-                        text: text.to_string(),
+                        text: escaped_text.to_string(),
                     },
                 ))
                 .await?;
