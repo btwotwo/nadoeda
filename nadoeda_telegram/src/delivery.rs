@@ -6,7 +6,7 @@ use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_storage::{UserInfoStorage, sqlite::user_storage::SqliteUserInfoStorage};
 use teloxide::{
     prelude::*,
-    types::{InlineKeyboardButton, InlineKeyboardButtonKind, InlineKeyboardMarkup, ParseMode},
+    types::{InlineKeyboardButton, InlineKeyboardMarkup, ParseMode},
 };
 use thiserror::Error;
 
@@ -87,7 +87,7 @@ fn get_message_text(reminder: &Reminder, message: ReminderMessageType) -> String
         ReminderMessageType::Nag => format!("🚨 (nag): {}", reminder.text),
         ReminderMessageType::Confirmation => format!("⁉️: {}", reminder.text),
         ReminderMessageType::Acknowledge => format!("☑️: {}", reminder.text),
-        ReminderMessageType::Timeout => format!("No reaction! Stopping."),
+        ReminderMessageType::Timeout => "No reaction! Stopping.".to_string(),
         ReminderMessageType::Finished => format!("✅: {}", reminder.text),
         ReminderMessageType::Cancelled => format!("❌: Cancelled {}", reminder.text),
     }

@@ -1,6 +1,5 @@
-use std::panic;
 
-use chrono::{Datelike, NaiveDate, NaiveTime, Timelike, Utc};
+use chrono::{NaiveTime, Timelike, Utc};
 
 use crate::user::UserId;
 
