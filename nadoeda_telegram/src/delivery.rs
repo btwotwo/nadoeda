@@ -25,8 +25,6 @@ pub enum TelegramDeliveryChannelError {
     NoTelegramConfigured(UserId),
 }
 
-
-
 pub struct TelegramDeliveryChannel {
     user_store: Arc<SqliteUserInfoStorage>,
     bot: Bot,
@@ -34,10 +32,7 @@ pub struct TelegramDeliveryChannel {
 
 impl TelegramDeliveryChannel {
     pub fn new(user_store: Arc<SqliteUserInfoStorage>, bot: Bot) -> Self {
-        Self {
-            user_store,
-            bot
-        }
+        Self { user_store, bot }
     }
 }
 
@@ -86,13 +81,13 @@ fn get_keyboard_markup(reminder: &Reminder, message: ReminderMessageType) -> Inl
 
 fn get_message_text(reminder: &Reminder, message: ReminderMessageType) -> String {
     match message {
-        ReminderMessageType::Scheduled => format!("⏱️: Reminder {} was scheduled.", reminder.text),
+        ReminderMessageType::Scheduled => format!("⏱️: Scheduled *{}*.", reminder.text),
         ReminderMessageType::Fired => format!("🚨: {}", reminder.text),
-        ReminderMessageType::Nag => format!("Please confirm: {}", reminder.text),
-        ReminderMessageType::Confirmation => format!("Did you really do it: {}", reminder.text),
-        ReminderMessageType::Acknowledge => format!("Confirmed: {}", reminder.text),
+        ReminderMessageType::Nag => format!("🚨 (nag): {}", reminder.text),
+        ReminderMessageType::Confirmation => format!("⁉️: {}", reminder.text),
+        ReminderMessageType::Acknowledge => format!("☑️: {}", reminder.text),
         ReminderMessageType::Timeout => format!("No reaction! Stopping."),
-        ReminderMessageType::Finished => format!("Confirmed for real: {}", reminder.text),
-        ReminderMessageType::Cancelled => format!("Cancelled reminder: {}", reminder.text),
+        ReminderMessageType::Finished => format!("✅: {}", reminder.text),
+        ReminderMessageType::Cancelled => format!("❌: Cancelled {}", reminder.text),
     }
 }
