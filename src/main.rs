@@ -9,7 +9,9 @@ use nadoeda_scheduler::delivery::{ReminderDeliveryChannel, ReminderMessageType};
 use nadoeda_storage::sqlite::{
     reminder_storage::SqliteReminderStorage, sqlx::SqlitePool, user_storage::SqliteUserInfoStorage,
 };
-use nadoeda_telegram::{TelegramInteractionInterface, delivery::TelegramDeliveryChannel, teloxide};
+use nadoeda_telegram::delivery::TelegramDeliveryChannel;
+use nadoeda_telegram::{teloxide};
+use nadoeda_telegram::ui::TelegramInteractionInterface;
 
 struct PrinterDeliveryChannel;
 

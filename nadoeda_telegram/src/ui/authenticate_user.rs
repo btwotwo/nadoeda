@@ -11,7 +11,7 @@ use teloxide::{dispatching::UpdateHandler, dptree, types::Update};
 
 use anyhow::anyhow;
 
-use crate::{
+use super::{
     AuthenticatedActionState, AuthenticationInfo, GlobalDialogue, GlobalState, HandlerResult,
 };
 use thiserror::Error;
@@ -60,7 +60,7 @@ async fn try_authenticate(
         dialogue
             .update(GlobalState::AuthenticatedV2(
                 AuthenticationInfo(user),
-                crate::AuthenticatedActionState::Idle,
+                AuthenticatedActionState::Idle,
             ))
             .await?;
         Ok(true)

@@ -13,8 +13,8 @@ use teloxide::{Bot, types::Message};
 
 use nadoeda_models::reminder::ReminderFireTime;
 
-use crate::util::try_get_message_from_query;
-use crate::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo};
+use super::util::try_get_message_from_query;
+use super::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo};
 
 use super::{GlobalCommand, HandlerResult};
 

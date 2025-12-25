@@ -13,7 +13,7 @@ use sqlx::{Pool, Sqlite};
 use teloxide::{dispatching::DpHandlerDescription, dptree::Handler, types::ChatId};
 use teloxide_tests::{MockBot, MockMessageText, mock_bot::DistributionKey};
 
-use crate::HandlerResult;
+use crate::ui::HandlerResult;
 
 pub struct NoopReminderScheduler;
 #[async_trait]

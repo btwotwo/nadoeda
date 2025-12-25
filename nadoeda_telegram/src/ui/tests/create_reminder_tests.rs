@@ -9,9 +9,9 @@ use teloxide::{
 };
 use teloxide_tests::{MockBot, MockMessageText};
 
-use crate::{create_daily_reminder::schema, *};
+use crate::ui::{create_daily_reminder::schema, *};
 
-use crate::tests::test_utils::*;
+use crate::ui::tests::test_utils::*;
 
 #[sqlite::sqlx::test]
 async fn test(pool: Pool<Sqlite>) {

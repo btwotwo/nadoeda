@@ -11,8 +11,8 @@ use teloxide::{filter_command, prelude::*};
 
 use nadoeda_models::reminder::{Reminder, ReminderFireTime, ReminderId};
 
-use crate::util::{clear_message_buttons, try_get_message_from_query};
-use crate::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo};
+use super::util::{clear_message_buttons, try_get_message_from_query};
+use super::{AuthenticatedActionState, AuthenticatedDialogue, AuthenticationInfo};
 
 use super::{GlobalCommand, HandlerResult};
 

@@ -1,9 +1,9 @@
-use crate::{
+use crate::ui::{
     AuthenticatedActionState, AuthenticationInfo, AuthenticationState, GlobalState,
     tests::test_utils::*,
 };
 
-use crate::authenticate_user::schema;
+use crate::ui::authenticate_user::schema;
 use nadoeda_models::{chrono_tz, user::User};
 use nadoeda_storage::{NewUser, UserInfoStorage};
 use sqlx::{Pool, Sqlite};
@@ -69,7 +69,7 @@ async fn given_user_exists_should_not_ask_for_info(pool: Pool<Sqlite>) {
 
     bot.dispatch_and_check_state(GlobalState::AuthenticatedV2(
         AuthenticationInfo(user),
-        crate::AuthenticatedActionState::Idle,
+        AuthenticatedActionState::Idle,
     ))
     .await
 }
@@ -169,7 +169,7 @@ async fn given_unauthenticated_state_when_user_exists_should_pass_message_to_han
 
     bot.dispatch_and_check_state(GlobalState::AuthenticatedV2(
         AuthenticationInfo(user),
-        crate::AuthenticatedActionState::Idle,
+        AuthenticatedActionState::Idle,
     ))
     .await;
 

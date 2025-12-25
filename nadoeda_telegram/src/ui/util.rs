@@ -6,7 +6,7 @@ use teloxide::{
     types::{CallbackQuery, InlineKeyboardMarkup, MaybeInaccessibleMessage, Message},
 };
 
-use crate::AuthenticationInfo;
+use super::AuthenticationInfo;
 
 pub trait HandlerExtensions<'a, Output, Descr>
 where
