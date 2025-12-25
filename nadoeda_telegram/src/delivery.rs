@@ -60,8 +60,8 @@ impl ReminderDeliveryChannel for TelegramDeliveryChannel {
 
         self.bot
             .send_message(ChatId(chat_id), message_text)
-            .reply_markup(keyboard_markup)
             .parse_mode(ParseMode::MarkdownV2)
+            .reply_markup(keyboard_markup)
             .await?;
 
         Ok(())
@@ -82,13 +82,13 @@ fn get_keyboard_markup(reminder: &Reminder, message: ReminderMessageType) -> Inl
 
 fn get_message_text(reminder: &Reminder, message: ReminderMessageType) -> String {
     match message {
-        ReminderMessageType::Scheduled => format!("⏱️: Scheduled *{}*.", reminder.text),
-        ReminderMessageType::Fired => format!("🚨: {}", reminder.text),
-        ReminderMessageType::Nag => format!("🚨 (nag): {}", reminder.text),
-        ReminderMessageType::Confirmation => format!("⁉️: {}", reminder.text),
-        ReminderMessageType::Acknowledge => format!("☑️: {}", reminder.text),
-        ReminderMessageType::Timeout => "No reaction! Stopping.".to_string(),
-        ReminderMessageType::Finished => format!("✅: {}", reminder.text),
-        ReminderMessageType::Cancelled => format!("❌: Cancelled {}", reminder.text),
+        ReminderMessageType::Scheduled => format!("⏱️ Scheduled *{}*", reminder.text),
+        ReminderMessageType::Fired => format!("🚨 {}", reminder.text),
+        ReminderMessageType::Nag => format!("🚨 {}", reminder.text),
+        ReminderMessageType::Confirmation => format!("⁉️ {}", reminder.text),
+        ReminderMessageType::Acknowledge => format!("☑️ {}", reminder.text),
+        ReminderMessageType::Timeout => "No reaction\\! Stopping\\.".to_string(),
+        ReminderMessageType::Finished => format!("✅ {}", reminder.text),
+        ReminderMessageType::Cancelled => format!("❌ Cancelled {}", reminder.text),
     }
 }
